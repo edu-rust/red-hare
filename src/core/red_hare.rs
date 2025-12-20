@@ -1,9 +1,10 @@
-use crate::core::data_utils::add_nanos;
+use crate::utils::date::add_nanos;
 use dashmap::DashMap;
+use std::sync::OnceLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub struct RedHare {
-    store: DashMap<String, MetaData>,
+    data: DashMap<String, MetaData>,
 }
 
 struct MetaData {
@@ -12,18 +13,26 @@ struct MetaData {
 }
 
 impl RedHare {
-    pub fn new() -> Self {
+    fn new() -> Self {
         RedHare {
-            store: DashMap::new(),
+            data: DashMap::new(),
         }
     }
 
+    pub fn single_instance() -> &'static RedHare {
+        static INSTANCE: OnceLock<RedHare> = OnceLock::new();
+        INSTANCE.get_or_init(|| RedHare::new())
+    }
+
+    pub fn key_set(&self) -> Vec<String> {
+        self.data.iter().map(|entry| entry.key().clone()).collect()
+    }
     pub fn set_string(&self, k: String, v: String) -> Result<bool, String> {
         if k.is_empty() {
             return Err("key is empty".to_string());
         }
         let value = v.into_bytes();
-        self.store.insert(
+        self.data.insert(
             k,
             MetaData {
                 value,
@@ -43,7 +52,7 @@ impl RedHare {
         }
         let expire_time = add_nanos(expire_time)?;
         let value = v.into_bytes();
-        self.store.insert(
+        self.data.insert(
             k,
             MetaData {
                 value,
@@ -53,11 +62,11 @@ impl RedHare {
         Ok(true)
     }
 
-    pub fn get_string(&self, k: String) -> Result<Option<String>, String> {
+    pub fn get_bytes_value(&self, k: String) -> Result<Option<Vec<u8>>, String> {
         if k.is_empty() {
             return Err("key is empty".to_string());
         }
-        let meta_data = match self.store.get(&k) {
+        let meta_data = match self.data.get(&k) {
             Some(data) => data,
             None => return Ok(None),
         };
@@ -75,14 +84,27 @@ impl RedHare {
 
             if current_time > expire_time {
                 drop(meta_data); // 释放锁后再删除
-                self.store.remove(&k);
+                self.data.remove(&k);
                 return Ok(None);
             }
         }
+        Ok(Some(value))
+    }
 
-        match String::from_utf8(value) {
-            Ok(data) => Ok(Some(data)),
-            Err(e) => Err(e.to_string()),
-        }
+    pub fn get_string(&self, k: String) -> Result<Option<String>, String> {
+        let data = self.get_bytes_value(k);
+        let data = match data {
+            Ok(data) => data,
+            Err(e) => return Err(e),
+        };
+
+        let data = match data {
+            None => return Ok(None),
+            Some(data) => data,
+        };
+
+        String::from_utf8(data)
+            .map(|s| Some(s))
+            .map_err(|e| e.to_string())
     }
 }

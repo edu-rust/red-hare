@@ -1,0 +1,2 @@
+[logging]
+log_rdb_dir = "./data.rdb"

@@ -10,5 +10,5 @@ Content-Type: application/json
 
 
 ### 获取指定key的字符串值
-GET http://127.0.0.1:7200/api/key/mykey
+GET http://127.0.0.1:7200/api/key/testKey_1
 Accept: application/json

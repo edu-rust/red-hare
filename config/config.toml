@@ -1,0 +1,3 @@
+[logging]
+log_rdb_dir = "./redhare_snapshot.rdb"
+log_level = "debug"

@@ -1,7 +1,7 @@
 use crate::core::persistence::Persistence;
 use crate::utils::date::{add_nanos, is_after_now, is_after_now_with_u128};
 use dashmap::DashMap;
-use log::{error, warn};
+use log::{error};
 use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
 
@@ -90,7 +90,7 @@ impl RedHare {
     }
 
     pub fn get_bytes_value_with_expire(&self, k: String) -> Result<Option<MetaData>, String> {
-        if (k.is_empty()) {
+        if k.is_empty() {
             return Err("key is empty".to_string());
         }
         let meta_data = match self.data.get(&k) {

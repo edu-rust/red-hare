@@ -1,4 +1,4 @@
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn is_after_now_with_u128(nanos: u128) -> Result<bool, String> {
     let current_time = SystemTime::now()

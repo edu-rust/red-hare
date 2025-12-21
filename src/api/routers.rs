@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 
 pub fn create_router() -> Router {
     Router::new()
-        .route("api/kv/save", post(set_string))
-        .route("/api/key/:key", get(get_string))
+        .route("/api/kv/save", post(set_string))
+        .route("/api/key/{key}", get(get_string))
 }
 
 #[derive(Deserialize, Serialize)]

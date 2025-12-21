@@ -54,7 +54,7 @@ pub fn save_rdb_file() {
                 None => {}
                 Some(meta_data) => match is_after_now(meta_data.expire_time) {
                     Ok(is_after_now) => {
-                        if (is_after_now) {
+                        if is_after_now {
                             data_vec.push(Persistence { key, meta_data });
                         }
                     }

@@ -1,6 +1,7 @@
 use crate::config::config::{Config, load_config};
 use crate::core::red_hare::{MetaData, RedHare};
 use crate::utils::date::is_after_now;
+use log::{error, info};
 use serde::Serialize;
 use std::fs::File;
 use std::io::Write;
@@ -28,13 +29,16 @@ pub fn save_rdb_file() {
                             data_vec.push(Persistence { key, meta_data });
                         }
                     }
-                    Err(err) => {
-                        todo!()
+                    Err(error) => {
+                        error!("failed to check expiration time for key {}: {}", key, error);
                     }
                 },
             },
-            Err(err) => {
-                todo!()
+            Err(error) => {
+                error!(
+                    "failed to get_bytes_value_with_expire for key {}: {}",
+                    key, error
+                );
             }
         }
     }
@@ -48,27 +52,42 @@ fn save_key_value_pair(data: Vec<Persistence>) {
     let serial_data = match bincode::serialize(&data) {
         Ok(serial_data) => serial_data,
         Err(error) => {
-            todo!()
+            error!(
+                "failed to serialize persistence data with bincode, error: {}",
+                error
+            );
+            return;
         }
     };
     let log_rdb_dir = match load_config() {
         Ok(log_rdb_dir) => log_rdb_dir.logging.log_rdb_dir,
         Err(error) => {
-            todo!()
+            error!("failed to load_config, error: {}", error);
+            return;
         }
     };
-    let mut file = match File::create(log_rdb_dir) {
+    let mut file = match File::create(&log_rdb_dir) {
         Ok(file) => file,
         Err(error) => {
-            todo!()
+            error!("failed to create rdb file at {}: {}", log_rdb_dir, error);
+            return;
         }
     };
     match file.write_all(&serial_data) {
-        Ok(ok) => {
-            //todo!()
+        Ok(_ok) => {
+            info!(
+                "successfully wrote rdb file with {} records to {}",
+                data.len(),
+                log_rdb_dir
+            );
         }
         Err(error) => {
-            todo!()
+            error!(
+                "failed to write rdb file with {} records to {}: {}",
+                data.len(),
+                log_rdb_dir,
+                error
+            );
         }
     }
     drop(file)

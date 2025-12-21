@@ -1,12 +1,12 @@
 use crate::utils::date::{add_nanos, is_after_now};
 use dashmap::DashMap;
-use std::sync::OnceLock;
+use log::warn;
 use serde::Serialize;
+use std::sync::OnceLock;
 
 pub struct RedHare {
     data: DashMap<String, MetaData>,
 }
-
 
 #[derive(Serialize)]
 pub struct MetaData {
@@ -63,7 +63,6 @@ impl RedHare {
         );
         Ok(true)
     }
-
 
     pub fn get_bytes_value_with_expire(&self, k: String) -> Result<Option<MetaData>, String> {
         if (k.is_empty()) {

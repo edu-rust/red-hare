@@ -1,2 +1,2 @@
 [logging]
-log_rdb_dir = "./data.rdb"
+log_rdb_dir = "./ redhare_snapshot.rdb"

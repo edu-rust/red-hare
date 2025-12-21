@@ -5,7 +5,7 @@ mod red_hare_test {
 
     #[test]
     fn test_set_string_success() {
-        let red_hare = RedHare::single_instance();
+        let red_hare = RedHare::singleton();
         let result = red_hare.set_string("test_key".to_string(), "test_value".to_string());
 
         assert!(result.is_ok());
@@ -14,7 +14,7 @@ mod red_hare_test {
 
     #[test]
     fn test_set_string_empty_key() {
-        let red_hare = RedHare::single_instance();
+        let red_hare = RedHare::singleton();
         let result = red_hare.set_string("".to_string(), "test_value".to_string());
         assert!(result.is_err());
         assert_eq!(result.err().unwrap(), "key is empty");
@@ -22,7 +22,7 @@ mod red_hare_test {
 
     #[test]
     fn test_get_string_success() {
-        let red_hare = RedHare::single_instance();
+        let red_hare = RedHare::singleton();
         // 先设置一个键值对
         let result = red_hare.set_string("test_key".to_string(), "test_value".to_string());
         assert!(result.is_ok());
@@ -36,7 +36,7 @@ mod red_hare_test {
 
     #[test]
     fn test_get_string_with_expire_success() {
-        let red_hare = RedHare::single_instance();
+        let red_hare = RedHare::singleton();
         let result = red_hare.set_string_with_expire(
             "test_key".to_string(),
             "test_value".to_string(),
@@ -53,7 +53,7 @@ mod red_hare_test {
 
     #[test]
     fn test_get_string_with_expire_fail() {
-        let red_hare = RedHare::single_instance();
+        let red_hare = RedHare::singleton();
         let ten_seconds= Duration::from_secs(10);
         let result = red_hare.set_string_with_expire(
             "test_key".to_string(),

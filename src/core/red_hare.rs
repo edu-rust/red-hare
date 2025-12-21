@@ -22,7 +22,7 @@ impl RedHare {
         }
     }
 
-    pub fn single_instance() -> &'static RedHare {
+    pub fn singleton() -> &'static RedHare {
         static INSTANCE: OnceLock<RedHare> = OnceLock::new();
         INSTANCE.get_or_init(|| RedHare::new())
     }

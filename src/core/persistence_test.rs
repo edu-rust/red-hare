@@ -1,22 +1,39 @@
 #[cfg(test)]
 mod persistence_test {
-    use crate::core::persistence::{Persistence, save_key_value_pair};
-    use crate::core::red_hare::MetaData;
+    use crate::core::persistence::{
+        restore_rdb_file, save_rdb_file,
+    };
+    use crate::core::red_hare::RedHare;
+
+    //测试之前,需要删除旧的rdb文件
+    #[test]
+    fn save_rdb_file_test() {
+        let red_hare = RedHare::singleton();
+        let ret = red_hare.set_string("test_key1".to_string(), "test_value1".to_string());
+        assert!(ret.is_ok());
+
+        let ret = red_hare.set_string("test_key2".to_string(), "test_value2".to_string());
+        assert!(ret.is_ok());
+
+        let ret = red_hare.set_string("test_key3".to_string(), "test_value3".to_string());
+        assert!(ret.is_ok());
+        save_rdb_file();
+    }
 
     #[test]
-    fn test_set_string_success() {
-        let mut vec_data = Vec::<Persistence>::new();
-        let mut data = Vec::new();
-        data.push(1);
-        data.push(2);
-        let meta_data = MetaData {
-            value: data,
-            expire_time: None,
-        };
-        vec_data.push(Persistence {
-            key: "test".to_string(),
-            meta_data,
-        });
-        save_key_value_pair(vec_data)
+    fn restore_rdb_file_test() {
+        restore_rdb_file();
+        let red_hare = RedHare::singleton();
+        let ret = red_hare.get_string("test_key1".to_string());
+        assert!(ret.is_ok());
+        assert_eq!(ret.unwrap().unwrap(), "test_value1".to_string());
+
+        let ret = red_hare.get_string("test_key2".to_string());
+        assert!(ret.is_ok());
+        assert_eq!(ret.unwrap().unwrap(), "test_value2".to_string());
+
+        let ret = red_hare.get_string("test_key3".to_string());
+        assert!(ret.is_ok());
+        assert_eq!(ret.unwrap().unwrap(), "test_value3".to_string());
     }
 }

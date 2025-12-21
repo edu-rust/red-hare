@@ -1,4 +1,4 @@
-use crate::config::config::{load_config};
+use crate::config::config::load_config;
 use crate::core::red_hare::{MetaData, RedHare};
 use crate::utils::date::is_after_now;
 use log::{error, info};
@@ -6,8 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::Write;
 
-#[derive(Serialize)]
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Persistence {
     pub key: String,
     pub meta_data: MetaData,
@@ -28,19 +27,21 @@ pub fn restore_rdb_file() {
             return;
         }
     };
-    let data:Vec<Persistence> = match bincode::deserialize_from(file) {
+    let data: Vec<Persistence> = match bincode::deserialize_from(file) {
         Ok(data) => data,
         Err(error) => {
             error!("failed to deserialize rdb file, error: {}", error);
             return;
         }
     };
-    let red_hare = RedHare::single_instance();
-    for data in data {}
+    let red_hare = RedHare::singleton();
+    for data in data {
+        red_hare.set_bytes_with_expire(data)
+    }
 }
 
 pub fn save_rdb_file() {
-    let red_hare = RedHare::single_instance();
+    let red_hare = RedHare::singleton();
     let keys = red_hare.keys_get();
     if keys.is_empty() {
         return;

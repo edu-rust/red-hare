@@ -1,0 +1,14 @@
+### 保存字符串值
+POST http://127.0.0.1:7200/api/kv/save
+Content-Type: application/json
+
+{
+  "key": "testKey_1",
+  "value": "test_value_1",
+  "expire_time": 10000000000
+}
+
+
+### 获取指定key的字符串值
+GET http://127.0.0.1:7200/api/key/mykey
+Accept: application/json

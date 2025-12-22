@@ -104,7 +104,7 @@ impl RedHare {
     }
 
     pub fn get_bytes_value(&self, k: String) -> Result<Option<Vec<u8>>, String> {
-        if (k.is_empty()) {
+        if k.is_empty() {
             return Err("key is empty".to_string());
         }
         let meta_data = match self.data.get(&k) {

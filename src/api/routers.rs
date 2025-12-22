@@ -20,10 +20,10 @@ struct StringSaveRequest {
 async fn get_string(Path(key): Path<String>) -> Result<Json<String>, String> {
     let red_hare = RedHare::singleton();
     let ret = red_hare.get_string(key)?;
-    return match ret {
+    match ret {
         None => Ok(Json(String::from(""))),
         Some(ret) => Ok(Json(ret)),
-    };
+    }
 }
 async fn set_string(Json(payload): Json<StringSaveRequest>) -> Result<Json<bool>, String> {
     let red_hare = RedHare::singleton();
@@ -36,8 +36,8 @@ async fn set_string(Json(payload): Json<StringSaveRequest>) -> Result<Json<bool>
             ret = red_hare.set_string(payload.key, payload.value);
         }
     }
-    return match ret {
+    match ret {
         Ok(ret) => Ok(Json(ret)),
         Err(error) => Err(error),
-    };
+    }
 }

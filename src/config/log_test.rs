@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod config_test {
-    use crate::config::config::load_config;
+    use crate::config::log::load_config;
 
     #[test]
     fn test_load_config() {

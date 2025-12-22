@@ -1,2 +1,2 @@
-pub mod config;
-mod config_test;
+pub mod log;
+mod log_test;

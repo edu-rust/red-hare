@@ -1,4 +1,4 @@
-use crate::config::config::load_config;
+use crate::config::log::load_config;
 use crate::core::red_hare::{MetaData, RedHare};
 use crate::utils::date::is_after_now;
 use log::{error, info};

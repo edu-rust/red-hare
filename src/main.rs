@@ -2,6 +2,7 @@ mod api;
 mod config;
 mod core;
 mod utils;
+mod protocol;
 
 use api::routers::create_router;
 use log::{error, info};

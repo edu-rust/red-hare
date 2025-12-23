@@ -1,10 +1,12 @@
 use crate::storage::persistence::Persistence;
 use crate::utils::date::{add_nanos, is_after_now, is_after_now_with_u128};
 use dashmap::DashMap;
-use tracing::{error, info};
 use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
+use tracing::{error, info};
 
+const STRING: &str = "string";
+const HASH: &str = "hash";
 pub struct RedHare {
     data: DashMap<String, MetaData>,
 }
@@ -13,6 +15,7 @@ pub struct RedHare {
 pub struct MetaData {
     pub value: Vec<u8>,
     pub expire_time: Option<u128>,
+    pub data_type: String,
 }
 
 impl RedHare {
@@ -52,13 +55,26 @@ impl RedHare {
             },
         };
     }
-    fn get_bytes_value(&self, k: String) -> Result<Option<Vec<u8>>, String> {
+
+    pub fn get_meta_data_with_expire(&self, k: String) -> Result<Option<MetaData>, String> {
         if k.is_empty() {
             return Err(String::from("key is empty"));
         }
         let meta_data = match self.data.get(&k) {
             Some(meta_data) => meta_data,
             None => return Ok(None),
+        };
+        Ok(Some(MetaData {
+            value: meta_data.value.clone(),
+            expire_time: meta_data.expire_time,
+            data_type: meta_data.data_type.clone(),
+        }))
+    }
+    fn get_bytes_value(&self, k: String) -> Result<Option<Vec<u8>>, String> {
+        let meta_data = self.get_meta_data_with_expire(k.clone())?;
+        let meta_data = match meta_data {
+            None => return Ok(None),
+            Some(meta_data) => meta_data
         };
         let value = meta_data.value.clone();
         if value.is_empty() {
@@ -73,33 +89,15 @@ impl RedHare {
         }
         Ok(Some(value))
     }
-
-    pub fn get_meta_data_with_expire(&self, k: String) -> Result<Option<MetaData>, String> {
-        if k.is_empty() {
-            return Err(String::from("key is empty"));
-        }
-        let meta_data = match self.data.get(&k) {
-            Some(meta_data) => meta_data,
-            None => return Ok(None),
-        };
-        Ok(Some(MetaData {
-            value: meta_data.value.clone(),
-            expire_time: meta_data.expire_time,
-        }))
-    }
 }
 
-
 // hash 操作
-impl RedHare { 
-    pub fn set_hash(&self, k: String, v: Vec<u8>){
-        
-    }
+impl RedHare {
+    pub fn set_hash(&self, k: String, v: Vec<u8>) {}
 }
 
 //字符串操作
 impl RedHare {
-
     pub fn set_string(&self, k: String, v: String) -> Result<bool, String> {
         if k.is_empty() {
             return Err(String::from("key is empty"));
@@ -110,6 +108,7 @@ impl RedHare {
             MetaData {
                 value,
                 expire_time: None,
+                data_type: String::from(STRING),
             },
         );
         Ok(true)
@@ -130,13 +129,12 @@ impl RedHare {
             MetaData {
                 value,
                 expire_time: Some(expire_time),
+                data_type: String::from(STRING),
             },
         );
         Ok(true)
     }
 
-    
-    
     pub fn get_string(&self, k: String) -> Result<Option<String>, String> {
         let data = self.get_bytes_value(k);
         let data = match data {

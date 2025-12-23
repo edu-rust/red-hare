@@ -54,15 +54,15 @@ mod red_hare_test {
     #[test]
     fn test_get_string_with_expire_fail() {
         let red_hare = RedHare::singleton();
-        let ten_seconds= Duration::from_secs(10);
+        let three_seconds= Duration::from_secs(3);
         let result = red_hare.set_string_with_expire(
             "test_key".to_string(),
             "test_value".to_string(),
-            ten_seconds.as_nanos(),
+            three_seconds.as_nanos(),
         );
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), true);
-        std::thread::sleep(Duration::from_secs(11));
+        std::thread::sleep(Duration::from_secs(4));
         let result = red_hare.get_string("test_key".to_string());
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), None);

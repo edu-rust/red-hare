@@ -1,7 +1,7 @@
 use crate::core::persistence::Persistence;
 use crate::utils::date::{add_nanos, is_after_now, is_after_now_with_u128};
 use dashmap::DashMap;
-use tracing::{error};
+use tracing::{error, info};
 use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
 
@@ -121,6 +121,7 @@ impl RedHare {
         }
         let is_after_now = is_after_now(meta_data.expire_time)?;
         if !is_after_now {
+            info!("key: {} is expired", k);
             drop(meta_data); // 释放锁后再删除
             self.data.remove(&k);
             return Ok(None);

@@ -62,7 +62,7 @@ mod red_hare_test {
         );
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), true);
-        std::thread::sleep(ten_seconds);
+        std::thread::sleep(Duration::from_secs(11));
         let result = red_hare.get_string("test_key".to_string());
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), None);

@@ -21,6 +21,10 @@ impl RedHare {
             data: DashMap::new(),
         }
     }
+}
+
+impl RedHare {
+
 
     pub fn singleton() -> &'static RedHare {
         static INSTANCE: OnceLock<RedHare> = OnceLock::new();

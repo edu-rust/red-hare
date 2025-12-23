@@ -60,7 +60,7 @@ impl RedHare {
 
     pub fn set_string(&self, k: String, v: String) -> Result<bool, String> {
         if k.is_empty() {
-            return Err("key is empty".to_string());
+            return Err(String::from("key is empty"));
         }
         let value = v.into_bytes();
         self.insert(
@@ -79,7 +79,7 @@ impl RedHare {
         expire_time: u128,
     ) -> Result<bool, String> {
         if k.is_empty() {
-            return Err("key is empty".to_string());
+            return Err(String::from("key is empty"));
         }
         let expire_time = add_nanos(expire_time)?;
         let value = v.into_bytes();
@@ -95,7 +95,7 @@ impl RedHare {
 
     pub fn get_bytes_value_with_expire(&self, k: String) -> Result<Option<MetaData>, String> {
         if k.is_empty() {
-            return Err("key is empty".to_string());
+            return Err(String::from("key is empty"));
         }
         let meta_data = match self.data.get(&k) {
             Some(meta_data) => meta_data,
@@ -109,7 +109,7 @@ impl RedHare {
 
     pub fn get_bytes_value(&self, k: String) -> Result<Option<Vec<u8>>, String> {
         if k.is_empty() {
-            return Err("key is empty".to_string());
+            return Err(String::from("key is empty"));
         }
         let meta_data = match self.data.get(&k) {
             Some(meta_data) => meta_data,

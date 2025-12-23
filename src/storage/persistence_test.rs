@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod persistence_test {
-    use crate::core::persistence::{
+    use crate::storage::persistence::{
         restore_rdb_file, save_rdb_file,
     };
     use crate::core::red_hare::RedHare;

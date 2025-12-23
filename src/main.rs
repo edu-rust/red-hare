@@ -3,6 +3,7 @@ mod config;
 mod core;
 mod protocol;
 mod utils;
+mod storage;
 
 use api::routers::create_router;
 use dotenv::dotenv;

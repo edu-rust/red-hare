@@ -21,16 +21,10 @@ impl RedHare {
             data: DashMap::new(),
         }
     }
-}
-
-impl RedHare {
-
-
     pub fn singleton() -> &'static RedHare {
         static INSTANCE: OnceLock<RedHare> = OnceLock::new();
         INSTANCE.get_or_init(|| RedHare::new())
     }
-
     pub fn keys_get(&self) -> Vec<String> {
         self.data.iter().map(|entry| entry.key().clone()).collect()
     }
@@ -54,6 +48,33 @@ impl RedHare {
             },
         };
     }
+    fn get_bytes_value(&self, k: String) -> Result<Option<Vec<u8>>, String> {
+        if k.is_empty() {
+            return Err(String::from("key is empty"));
+        }
+        let meta_data = match self.data.get(&k) {
+            Some(meta_data) => meta_data,
+            None => return Ok(None),
+        };
+        let value = meta_data.value.clone();
+        if value.is_empty() {
+            return Ok(None);
+        }
+        let is_after_now = is_after_now(meta_data.expire_time)?;
+        if !is_after_now {
+            info!("key: {} is expired", k);
+            drop(meta_data); // 释放锁后再删除
+            self.data.remove(&k);
+            return Ok(None);
+        }
+        Ok(Some(value))
+    }
+}
+
+
+//字符串操作
+impl RedHare {
+
     fn insert(&self, k: String, v: MetaData) {
         self.data.insert(k, v);
     }
@@ -107,27 +128,7 @@ impl RedHare {
         }))
     }
 
-    pub fn get_bytes_value(&self, k: String) -> Result<Option<Vec<u8>>, String> {
-        if k.is_empty() {
-            return Err(String::from("key is empty"));
-        }
-        let meta_data = match self.data.get(&k) {
-            Some(meta_data) => meta_data,
-            None => return Ok(None),
-        };
-        let value = meta_data.value.clone();
-        if value.is_empty() {
-            return Ok(None);
-        }
-        let is_after_now = is_after_now(meta_data.expire_time)?;
-        if !is_after_now {
-            info!("key: {} is expired", k);
-            drop(meta_data); // 释放锁后再删除
-            self.data.remove(&k);
-            return Ok(None);
-        }
-        Ok(Some(value))
-    }
+
 
     pub fn get_string(&self, k: String) -> Result<Option<String>, String> {
         let data = self.get_bytes_value(k);

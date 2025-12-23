@@ -10,7 +10,7 @@ pub fn is_after_now_with_u128(nanos: u128) -> Result<bool, String> {
 pub fn is_after_now(nanos: Option<u128>) -> Result<bool, String> {
     let nanos = match nanos {
         Some(nanos) => nanos,
-        None => return Ok(false),
+        None => return Ok(true),
     };
     is_after_now_with_u128(nanos)
 }

@@ -93,7 +93,11 @@ impl RedHare {
 
 // hash 操作
 impl RedHare {
-    pub fn set_hash(&self, k: String, v: Vec<u8>) {}
+    pub fn h_set_string(&self, k: String, v: Vec<u8>) {}
+
+    pub fn h_set_string_with_expire(&self, k: String, v: Vec<u8>) {}
+
+    pub fn h_get_with_expire(&self, k: String, v: Vec<u8>) {}
 }
 
 //字符串操作

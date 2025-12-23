@@ -25,6 +25,10 @@ impl RedHare {
         static INSTANCE: OnceLock<RedHare> = OnceLock::new();
         INSTANCE.get_or_init(|| RedHare::new())
     }
+
+    fn insert(&self, k: String, v: MetaData) {
+        self.data.insert(k, v);
+    }
     pub fn keys_get(&self) -> Vec<String> {
         self.data.iter().map(|entry| entry.key().clone()).collect()
     }
@@ -69,15 +73,32 @@ impl RedHare {
         }
         Ok(Some(value))
     }
+
+    pub fn get_meta_data_with_expire(&self, k: String) -> Result<Option<MetaData>, String> {
+        if k.is_empty() {
+            return Err(String::from("key is empty"));
+        }
+        let meta_data = match self.data.get(&k) {
+            Some(meta_data) => meta_data,
+            None => return Ok(None),
+        };
+        Ok(Some(MetaData {
+            value: meta_data.value.clone(),
+            expire_time: meta_data.expire_time,
+        }))
+    }
 }
 
 
+// hash 操作
+impl RedHare { 
+    pub fn set_hash(&self, k: String, v: Vec<u8>){
+        
+    }
+}
+
 //字符串操作
 impl RedHare {
-
-    fn insert(&self, k: String, v: MetaData) {
-        self.data.insert(k, v);
-    }
 
     pub fn set_string(&self, k: String, v: String) -> Result<bool, String> {
         if k.is_empty() {
@@ -114,22 +135,8 @@ impl RedHare {
         Ok(true)
     }
 
-    pub fn get_bytes_value_with_expire(&self, k: String) -> Result<Option<MetaData>, String> {
-        if k.is_empty() {
-            return Err(String::from("key is empty"));
-        }
-        let meta_data = match self.data.get(&k) {
-            Some(meta_data) => meta_data,
-            None => return Ok(None),
-        };
-        Ok(Some(MetaData {
-            value: meta_data.value.clone(),
-            expire_time: meta_data.expire_time,
-        }))
-    }
-
-
-
+    
+    
     pub fn get_string(&self, k: String) -> Result<Option<String>, String> {
         let data = self.get_bytes_value(k);
         let data = match data {

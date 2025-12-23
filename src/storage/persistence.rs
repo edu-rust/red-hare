@@ -49,7 +49,7 @@ pub fn save_rdb_file() {
     let mut data_vec = Vec::with_capacity(keys.len());
 
     for key in keys {
-        match red_hare.get_bytes_value_with_expire(key.clone()) {
+        match red_hare.get_meta_data_with_expire(key.clone()) {
             Ok(value) => match value {
                 None => {}
                 Some(meta_data) => match is_after_now(meta_data.expire_time) {

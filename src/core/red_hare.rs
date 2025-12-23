@@ -70,25 +70,7 @@ impl RedHare {
             data_type: meta_data.data_type.clone(),
         }))
     }
-    // fn get_bytes_value(&self, k: String) -> Result<Option<Vec<u8>>, String> {
-    //     let meta_data = self.get_meta_data_with_expire(k.clone())?;
-    //     let meta_data = match meta_data {
-    //         None => return Ok(None),
-    //         Some(meta_data) => meta_data
-    //     };
-    //     let value = meta_data.value.clone();
-    //     if value.is_empty() {
-    //         return Ok(None);
-    //     }
-    //     let is_after_now = is_after_now(meta_data.expire_time)?;
-    //     if !is_after_now {
-    //         info!("key: {} is expired", k);
-    //         drop(meta_data); // 释放锁后再删除
-    //         self.data.remove(&k);
-    //         return Ok(None);
-    //     }
-    //     Ok(Some(value))
-    // }
+
 }
 
 // hash 操作

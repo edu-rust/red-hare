@@ -1,7 +1,7 @@
 use crate::config::log::load_config;
 use crate::core::red_hare::{MetaData, RedHare};
 use crate::utils::date::is_after_now;
-use log::{error, info};
+use tracing::{error, info};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::Write;

@@ -1,7 +1,7 @@
 use crate::core::persistence::Persistence;
 use crate::utils::date::{add_nanos, is_after_now, is_after_now_with_u128};
 use dashmap::DashMap;
-use log::{error};
+use tracing::{error};
 use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
 

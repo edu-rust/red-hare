@@ -11,7 +11,7 @@ pub struct StringSaveRequest {
 }
 
 pub async fn get_string(Path(key): Path<String>) -> Result<Json<String>, String> {
-    let ret = red_hare_wrapper::get_string(key).await?;
+    let ret = red_hare_wrapper::get_string(key)?;
     match ret {
         None => Ok(Json(String::from(""))),
         Some(ret) => Ok(Json(ret)),
@@ -21,11 +21,10 @@ pub async fn set_string(Json(payload): Json<StringSaveRequest>) -> Result<Json<b
     let ret;
     match payload.expire_time {
         Some(expire_time) => {
-            ret = red_hare_wrapper::set_string_with_expire(payload.key, payload.value, expire_time)
-                .await;
+            ret = red_hare_wrapper::set_string_with_expire(payload.key, payload.value, expire_time);
         }
         None => {
-            ret = red_hare_wrapper::set_string(payload.key, payload.value).await;
+            ret = red_hare_wrapper::set_string(payload.key, payload.value);
         }
     }
     match ret {

@@ -13,17 +13,17 @@ pub struct Persistence {
 }
 
 pub async fn restore_rdb_file() {
-    let log_rdb_dir = match load_config() {
-        Ok(log_rdb_dir) => log_rdb_dir.logging.log_rdb_dir,
+    let log_rdb_path = match load_config() {
+        Ok(config) => config.logging.log_rdb_path,
         Err(error) => {
             error!("failed to load_config, error: {}", error);
             return;
         }
     };
-    let file = match File::open(&log_rdb_dir) {
+    let file = match File::open(&log_rdb_path) {
         Ok(file) => file,
         Err(error) => {
-            error!("failed to open rdb file at {}: {}", log_rdb_dir, error);
+            error!("failed to open rdb file at {}: {}", log_rdb_path, error);
             return;
         }
     };
@@ -64,7 +64,7 @@ pub async fn save_rdb_file() {
                         if is_after_now {
                             //let k1=key;
                             data_vec.push(Persistence {
-                                key: key.clone(),
+                                key,
                                 meta_data,
                             });
                         }
@@ -99,36 +99,36 @@ fn save_key_value_pair(data: Vec<Persistence>) {
             return;
         }
     };
-    let log_rdb_dir = match load_config() {
-        Ok(log_rdb_dir) => log_rdb_dir.logging.log_rdb_dir,
+    let log_rdb_path = match load_config() {
+        Ok(config) => config.logging.log_rdb_path,
         Err(error) => {
             error!("failed to load_config, error: {}", error);
             return;
         }
     };
-    let mut file = match File::create(&log_rdb_dir) {
+    let mut file = match File::create(&log_rdb_path) {
         Ok(file) => file,
         Err(error) => {
-            error!("failed to create rdb file at {}: {}", log_rdb_dir, error);
+            error!("failed to create rdb file at {}: {}", log_rdb_path, error);
             return;
         }
     };
     match file.write_all(&serial_data) {
-        Ok(_ok) => {
+        Ok(_) => {
             info!(
                 "successfully wrote rdb file with {} records to {}",
                 data.len(),
-                log_rdb_dir
+                log_rdb_path
             );
         }
         Err(error) => {
             error!(
                 "failed to write rdb file with {} records to {}: {}",
                 data.len(),
-                log_rdb_dir,
+                log_rdb_path,
                 error
             );
         }
     }
-    drop(file)
+    //drop(file)
 }

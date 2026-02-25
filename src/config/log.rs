@@ -8,7 +8,7 @@ pub struct Config {
 
 #[derive(Deserialize)]
 pub struct LoggingConfig {
-    pub log_rdb_dir: String,
+    pub log_rdb_path: String,
     // pub log_level: String,
 }
 

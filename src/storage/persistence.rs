@@ -130,5 +130,4 @@ fn save_key_value_pair(data: Vec<Persistence>) {
             );
         }
     }
-    //drop(file)
 }

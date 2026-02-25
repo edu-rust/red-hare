@@ -43,7 +43,7 @@ pub async fn restore_rdb_file() {
 pub async fn save_rdb_file() {
     let keys = {
         let red_hare = RedHare::get_instance().lock().await;
-        let keys=red_hare.keys_get().clone();
+        let keys=red_hare.keys_get();
         keys
     };
     if keys.is_empty() {

@@ -41,7 +41,7 @@ pub async fn restore_rdb_file() {
 }
 
 pub async fn save_rdb_file() {
-    let mut red_hare = RedHare::get_instance().lock().await;
+    let  red_hare = RedHare::get_instance().lock().await;
     let keys = red_hare.keys_get();
     if keys.is_empty() {
         return;
@@ -81,7 +81,7 @@ pub async fn save_rdb_file() {
     save_key_value_pair(data_vec)
 }
 
-pub fn save_key_value_pair(data: Vec<Persistence>) {
+fn save_key_value_pair(data: Vec<Persistence>) {
     let serial_data = match bincode::serialize(&data) {
         Ok(serial_data) => serial_data,
         Err(error) => {

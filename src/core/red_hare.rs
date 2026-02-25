@@ -3,7 +3,7 @@ use crate::utils::date::{add_nanos, is_after_now, is_after_now_with_u128};
 use griddle::HashMap;
 use serde::{Deserialize, Serialize};
 use std::sync::{LazyLock};
-use tokio::sync::{Mutex, MutexGuard};
+use tokio::sync::{Mutex};
 use tracing::{error, info};
 
 const STRING: &str = "string";

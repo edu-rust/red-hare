@@ -1,14 +1,15 @@
 use crate::storage::persistence::Persistence;
 use crate::utils::date::{add_nanos, is_after_now, is_after_now_with_u128};
-use dashmap::DashMap;
+use griddle::HashMap;
 use serde::{Deserialize, Serialize};
-use std::sync::OnceLock;
+use std::sync::{LazyLock};
+use tokio::sync::{Mutex, MutexGuard};
 use tracing::{error, info};
 
 const STRING: &str = "string";
 const HASH: &str = "hash";
 pub struct RedHare {
-    data: DashMap<String, MetaData>,
+    data: HashMap<String, MetaData>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -17,25 +18,28 @@ pub struct MetaData {
     pub expire_time: Option<u128>,
     pub data_type: String,
 }
-
+static INSTANCE: LazyLock<Mutex<RedHare>> = LazyLock::new(|| { Mutex::new(RedHare::new()) });
 impl RedHare {
     fn new() -> Self {
         RedHare {
-            data: DashMap::new(),
+            data: HashMap::new(),
         }
     }
-    pub fn singleton() -> &'static RedHare {
-        static INSTANCE: OnceLock<RedHare> = OnceLock::new();
-        INSTANCE.get_or_init(|| RedHare::new())
-    }
 
-    fn insert(&self, k: String, v: MetaData) {
+    pub fn get_instance() -> &'static Mutex<RedHare> {
+        &INSTANCE
+    }
+    // pub async fn acquire_instance() -> MutexGuard<'static, RedHare> {
+    //     RedHare::get_instance().lock().await
+    // }
+
+    fn insert(&mut self, k: String, v: MetaData) {
         self.data.insert(k, v);
     }
-    pub fn keys_get(&self) -> Vec<String> {
-        self.data.iter().map(|entry| entry.key().clone()).collect()
+    pub fn keys_get(&self) -> Vec<&String> {
+        self.data.keys().collect()
     }
-    pub fn set_bytes_with_expire(&self, persistence: Persistence) {
+    pub fn set_bytes_with_expire(&mut self, persistence: Persistence) {
         let meta_data = persistence.meta_data;
         match meta_data.expire_time {
             None => self.insert(persistence.key, meta_data),
@@ -56,11 +60,11 @@ impl RedHare {
         };
     }
 
-    pub fn get_meta_data_with_expire(&self, k: String) -> Result<Option<MetaData>, String> {
+    pub fn get_meta_data_with_expire(&self, k: &String) -> Result<Option<MetaData>, String> {
         if k.is_empty() {
             return Err(String::from("key is empty"));
         }
-        let meta_data = match self.data.get(&k) {
+        let meta_data = match self.data.get(k) {
             Some(meta_data) => meta_data,
             None => return Ok(None),
         };
@@ -84,13 +88,13 @@ impl RedHare {
 
 //字符串操作
 impl RedHare {
-    pub fn set_string(&self, k: String, v: String) -> Result<bool, String> {
+    pub fn set_string(&mut self, k: &String, v: String) -> Result<bool, String> {
         if k.is_empty() {
             return Err(String::from("key is empty"));
         }
         let value = v.into_bytes();
         self.insert(
-            k,
+            k.clone(),
             MetaData {
                 value,
                 expire_time: None,
@@ -100,7 +104,7 @@ impl RedHare {
         Ok(true)
     }
     pub fn set_string_with_expire(
-        &self,
+        &mut self,
         k: String,
         v: String,
         expire_time: u128,
@@ -121,8 +125,8 @@ impl RedHare {
         Ok(true)
     }
 
-    pub fn get_string(&self, k: String) -> Result<Option<String>, String> {
-        let data = self.get_meta_data_with_expire(k.clone());
+    pub fn get_string(&mut self, k: &String) -> Result<Option<String>, String> {
+        let data = self.get_meta_data_with_expire(k);
         let data = match data {
             Ok(data) => data,
             Err(e) => return Err(e),
@@ -138,7 +142,7 @@ impl RedHare {
         if !is_after_now {
             info!("key: {} is expired", k);
             drop(data); // 释放锁后再删除
-            self.data.remove(&k);
+            self.data.remove(k);
             return Ok(None);
         }
         String::from_utf8(data.value)

@@ -1,10 +1,10 @@
 use crate::config::log::load_config;
 use crate::core::red_hare::{MetaData, RedHare};
 use crate::utils::date::is_after_now;
-use tracing::{error, info};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::Write;
+use tracing::{error, info};
 
 #[derive(Serialize, Deserialize)]
 pub struct Persistence {
@@ -12,7 +12,7 @@ pub struct Persistence {
     pub meta_data: MetaData,
 }
 
-pub fn restore_rdb_file() {
+pub async fn restore_rdb_file() {
     let log_rdb_dir = match load_config() {
         Ok(log_rdb_dir) => log_rdb_dir.logging.log_rdb_dir,
         Err(error) => {
@@ -34,14 +34,14 @@ pub fn restore_rdb_file() {
             return;
         }
     };
-    let red_hare = RedHare::singleton();
+    let mut red_hare = RedHare::get_instance().lock().await;
     for data in data {
         red_hare.set_bytes_with_expire(data)
     }
 }
 
-pub fn save_rdb_file() {
-    let red_hare = RedHare::singleton();
+pub async fn save_rdb_file() {
+    let mut red_hare = RedHare::get_instance().lock().await;
     let keys = red_hare.keys_get();
     if keys.is_empty() {
         return;
@@ -49,13 +49,17 @@ pub fn save_rdb_file() {
     let mut data_vec = Vec::with_capacity(keys.len());
 
     for key in keys {
-        match red_hare.get_meta_data_with_expire(key.clone()) {
+        match red_hare.get_meta_data_with_expire(key) {
             Ok(value) => match value {
                 None => {}
                 Some(meta_data) => match is_after_now(meta_data.expire_time) {
                     Ok(is_after_now) => {
                         if is_after_now {
-                            data_vec.push(Persistence { key, meta_data });
+                            //let k1=key;
+                            data_vec.push(Persistence {
+                                key: key.clone(),
+                                meta_data,
+                            });
                         }
                     }
                     Err(error) => {

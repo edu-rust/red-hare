@@ -29,15 +29,12 @@ impl RedHare {
     pub fn get_instance() -> &'static Mutex<RedHare> {
         &INSTANCE
     }
-    // pub async fn acquire_instance() -> MutexGuard<'static, RedHare> {
-    //     RedHare::get_instance().lock().await
-    // }
 
     fn insert(&mut self, k: String, v: MetaData) {
         self.data.insert(k, v);
     }
-    pub fn keys_get(&self) -> Vec<&String> {
-        self.data.keys().collect()
+    pub fn keys_get(&self) -> Vec<String> {
+        self.data.keys().cloned().collect()
     }
     pub fn set_bytes_with_expire(&mut self, persistence: Persistence) {
         let meta_data = persistence.meta_data;

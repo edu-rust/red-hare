@@ -41,15 +41,22 @@ pub async fn restore_rdb_file() {
 }
 
 pub async fn save_rdb_file() {
-    let  red_hare = RedHare::get_instance().lock().await;
-    let keys = red_hare.keys_get();
+    let keys = {
+        let red_hare = RedHare::get_instance().lock().await;
+        let keys=red_hare.keys_get().clone();
+        keys
+    };
     if keys.is_empty() {
         return;
     }
     let mut data_vec = Vec::with_capacity(keys.len());
 
     for key in keys {
-        match red_hare.get_meta_data_with_expire(key) {
+        let meta = {
+            let red_hare = RedHare::get_instance().lock().await;
+            red_hare.get_meta_data_with_expire(&key)
+        };
+        match meta {
             Ok(value) => match value {
                 None => {}
                 Some(meta_data) => match is_after_now(meta_data.expire_time) {

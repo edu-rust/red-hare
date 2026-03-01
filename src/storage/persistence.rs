@@ -3,7 +3,7 @@ use crate::core::red_hare::{MetaData, RedHare};
 use crate::utils::date::is_after_now;
 use serde::{Deserialize, Serialize};
 use std::fs::{File, rename};
-use std::io::Write;
+use std::io::{Error, Write};
 use std::path::Path;
 use tracing::{error, info};
 
@@ -87,65 +87,42 @@ pub async fn save_rdb_file() {
             }
         }
     }
+
     if data_vec.is_empty() {
         return;
     }
-    save_rdb_rdb_file(data_vec, log_rdb_path)
+
+    if let Err(e) = save_rdb_rdb_file(data_vec, &log_rdb_path) {
+        error!(
+            "save_rdb_rdb_file error, log_rdb_path:{}, error:{}",
+            log_rdb_path, e
+        );
+    }
 }
 
-fn save_rdb_rdb_file(data: Vec<Persistence>, log_rdb_path: String) {
-    let serial_data = match bincode::serialize(&data) {
-        Ok(serial_data) => serial_data,
-        Err(error) => {
-            error!(
-                "failed to serialize persistence data with bincode, error: {}",
-                error
-            );
-            return;
-        }
-    };
+fn save_rdb_rdb_file(data: Vec<Persistence>, log_rdb_path: &String) -> Result<(), Error> {
+    let serial_data = bincode::serialize(&data).map_err(|e| {
+        error!("failed to serialize persistence data with bincode: {}", e);
+        Error::new(std::io::ErrorKind::Other, e.to_string())
+    })?;
 
-    let path = Path::new(&log_rdb_path);
+    let path = Path::new(log_rdb_path);
     let temp_path = path.with_extension("temp");
 
-    let mut temp_rdb_file = match File::create(&temp_path) {
-        Ok(file) => file,
-        Err(error) => {
-            error!(
-                "failed to create log.temp file at {}: {}",
-                "log_rdb.temp", error
-            );
-            return;
-        }
-    };
-    match temp_rdb_file.write_all(&serial_data) {
-        Ok(_) => {}
-        Err(error) => {
-            error!(
-                "failed to write rdb file with {} records to {}: {}",
-                data.len(),
-                log_rdb_path,
-                error
-            );
-            return;
-        }
-    }
-    match temp_rdb_file.sync_all() {
-        Ok(_) => {}
-        Err(error) => {
-            error!("failed to sync_all log_rdb__temp_file,error:{}", error);
-            return;
-        }
-    }
-    match rename(temp_path, log_rdb_path) {
-        Ok(_) => {}
-        Err(error) => {
-            error!(
-                "failed to rename from log_rdb_temp_file to log_rdb_file,error:{}",
-                error
-            );
-            return;
-        }
-    };
-    info!("success save_rdb_rdb_file")
+    let mut temp_rdb_file = File::create(&temp_path)?;
+
+    temp_rdb_file.write_all(&serial_data)?;
+
+    temp_rdb_file.sync_all()?;
+    rename(temp_path.clone(), log_rdb_path)?;
+
+    let parent_path = temp_path
+        .parent()
+        .ok_or_else(|| Error::new(std::io::ErrorKind::Other, "parent_path is empty"))?;
+
+    let parent_file = File::open(parent_path)?;
+
+    parent_file.sync_all()?;
+    info!("success save_rdb_rdb_file");
+    Ok(())
 }

@@ -25,7 +25,7 @@ pub async fn restore_rdb_file() -> Result<(), Error> {
         bincode::deserialize_from(file).map_err(|e| Error::new(Other, e.to_string()))?;
     let mut red_hare = RedHare::get_instance().lock().await;
     for data in data {
-        if let Err(e) = red_hare.set_bytes_with_expire(data) {
+        if let Err(e) = red_hare.set_bytes(data) {
             error!("set_bytes_with_expire failed: {}", e);
         }
     }
@@ -51,7 +51,7 @@ pub async fn save_rdb_data() -> Result<(), Error> {
     for key in keys {
         let meta = {
             let red_hare = RedHare::get_instance().lock().await;
-            red_hare.get_meta_data_with_expire(&key)
+            red_hare.get_meta_data(&key)
         };
         match meta {
             Ok(Some(meta_data)) => match is_after_now(meta_data.expire_time) {

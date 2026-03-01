@@ -1,11 +1,10 @@
 use crate::storage::persistence::Persistence;
-use crate::utils::date::{add_nanos, is_after_now, is_after_now_with_u128};
+use crate::utils::date::is_after_now_with_u128;
 use griddle::HashMap;
 use serde::{Deserialize, Serialize};
 use std::io::Error;
 use std::sync::LazyLock;
 use tokio::sync::Mutex;
-use tracing::{error, info};
 
 pub(crate) const STRING: &str = "string";
 pub struct RedHare {
@@ -36,7 +35,7 @@ impl RedHare {
     pub fn keys_get(&self) -> Vec<String> {
         self.data.keys().cloned().collect()
     }
-    pub fn set_bytes_with_expire(&mut self, persistence: Persistence) -> Result<(), Error> {
+    pub fn set_bytes(&mut self, persistence: Persistence) -> Result<(), Error> {
         let meta_data = persistence.meta_data;
         match meta_data.expire_time {
             None => self.insert(persistence.key, meta_data),
@@ -52,7 +51,7 @@ impl RedHare {
         Ok(())
     }
 
-    pub fn get_meta_data_with_expire(&self, k: &String) -> Result<Option<MetaData>, String> {
+    pub fn get_meta_data(&self, k: &String) -> Result<Option<MetaData>, String> {
         if k.is_empty() {
             return Err(String::from("key is empty"));
         }

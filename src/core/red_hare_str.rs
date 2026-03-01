@@ -41,7 +41,7 @@ impl RedHare {
     }
 
     pub fn get_string(&mut self, k: &String) -> Result<Option<String>, String> {
-        let data = self.get_meta_data_with_expire(k);
+        let data = self.get_meta_data(k);
         let data = match data {
             Ok(data) => data,
             Err(e) => return Err(e),

@@ -2,8 +2,9 @@ use crate::storage::persistence::Persistence;
 use crate::utils::date::{add_nanos, is_after_now, is_after_now_with_u128};
 use griddle::HashMap;
 use serde::{Deserialize, Serialize};
-use std::sync::{LazyLock};
-use tokio::sync::{Mutex};
+use std::io::Error;
+use std::sync::LazyLock;
+use tokio::sync::Mutex;
 use tracing::{error, info};
 
 const STRING: &str = "string";
@@ -18,7 +19,7 @@ pub struct MetaData {
     pub expire_time: Option<u128>,
     pub data_type: String,
 }
-static INSTANCE: LazyLock<Mutex<RedHare>> = LazyLock::new(|| { Mutex::new(RedHare::new()) });
+static INSTANCE: LazyLock<Mutex<RedHare>> = LazyLock::new(|| Mutex::new(RedHare::new()));
 impl RedHare {
     fn new() -> Self {
         RedHare {
@@ -36,7 +37,7 @@ impl RedHare {
     pub fn keys_get(&self) -> Vec<String> {
         self.data.keys().cloned().collect()
     }
-    pub fn set_bytes_with_expire(&mut self, persistence: Persistence) {
+    pub fn set_bytes_with_expire(&mut self, persistence: Persistence) -> Result<(), Error> {
         let meta_data = persistence.meta_data;
         match meta_data.expire_time {
             None => self.insert(persistence.key, meta_data),
@@ -46,15 +47,10 @@ impl RedHare {
                         self.insert(persistence.key, meta_data);
                     }
                 }
-                Err(error) => {
-                    error!(
-                        "failed to set_bytes_with_expire.validate expiration time: {}",
-                        error
-                    );
-                    return;
-                }
+                Err(error) => return Err(Error::other(error)),
             },
         };
+        Ok(())
     }
 
     pub fn get_meta_data_with_expire(&self, k: &String) -> Result<Option<MetaData>, String> {

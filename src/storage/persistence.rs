@@ -3,6 +3,7 @@ use crate::core::red_hare::{MetaData, RedHare};
 use crate::utils::date::is_after_now;
 use serde::{Deserialize, Serialize};
 use std::fs::{File, rename};
+use std::io::ErrorKind::Other;
 use std::io::{Error, Write};
 use std::path::Path;
 use tracing::{error, info};
@@ -13,49 +14,37 @@ pub struct Persistence {
     pub meta_data: MetaData,
 }
 
-pub async fn restore_rdb_file() {
-    let log_rdb_path = match load_config() {
-        Ok(config) => config.logging.log_rdb_path,
-        Err(error) => {
-            error!("failed to load_config, error: {}", error);
-            return;
-        }
-    };
-    let file = match File::open(&log_rdb_path) {
-        Ok(file) => file,
-        Err(error) => {
-            error!("failed to open rdb file at {}: {}", log_rdb_path, error);
-            return;
-        }
-    };
-    let data: Vec<Persistence> = match bincode::deserialize_from(file) {
-        Ok(data) => data,
-        Err(error) => {
-            error!("failed to deserialize rdb file, error: {}", error);
-            return;
-        }
-    };
+pub async fn restore_rdb_file() -> Result<(), Error> {
+    let log_rdb_path = load_config()
+        .map_err(|e| Error::new(Other, e.to_string()))?
+        .logging
+        .log_rdb_path;
+
+    let file = File::open(&log_rdb_path)?;
+    let data: Vec<Persistence> =
+        bincode::deserialize_from(file).map_err(|e| Error::new(Other, e.to_string()))?;
     let mut red_hare = RedHare::get_instance().lock().await;
     for data in data {
-        red_hare.set_bytes_with_expire(data)
+        if let Err(e) = red_hare.set_bytes_with_expire(data) {
+            error!("set_bytes_with_expire failed: {}", e);
+        }
     }
+    Ok(())
 }
 
-pub async fn save_rdb_file() {
-    let log_rdb_path = match load_config() {
-        Ok(config) => config.logging.log_rdb_path,
-        Err(error) => {
-            error!("failed to load_config, error: {}", error);
-            return;
-        }
-    };
+pub async fn save_rdb_data() -> Result<(), Error> {
+    let log_rdb_path = load_config()
+        .map_err(|e| Error::new(Other, e))?
+        .logging
+        .log_rdb_path;
+
     let keys = {
         let red_hare = RedHare::get_instance().lock().await;
         let keys = red_hare.keys_get();
         keys
     };
     if keys.is_empty() {
-        return;
+        return Err(Error::new(Other, "keys is empty"));
     }
     let mut data_vec = Vec::with_capacity(keys.len());
 
@@ -65,39 +54,22 @@ pub async fn save_rdb_file() {
             red_hare.get_meta_data_with_expire(&key)
         };
         match meta {
-            Ok(value) => match value {
-                None => {}
-                Some(meta_data) => match is_after_now(meta_data.expire_time) {
-                    Ok(is_after_now) => {
-                        if is_after_now {
-                            //let k1=key;
-                            data_vec.push(Persistence { key, meta_data });
-                        }
-                    }
-                    Err(error) => {
-                        error!("failed to check expiration time for key {}: {}", key, error);
-                    }
-                },
+            Ok(Some(meta_data)) => match is_after_now(meta_data.expire_time) {
+                Ok(true) => data_vec.push(Persistence { key, meta_data }),
+                Ok(false) => {}
+                Err(e) => error!("failed to check expiration time for key {}: {}", key, e),
             },
-            Err(error) => {
-                error!(
-                    "failed to get_bytes_value_with_expire for key {}: {}",
-                    key, error
-                );
-            }
+            Ok(None) => {}
+            Err(e) => error!(
+                "failed to get_bytes_value_with_expire for key {}: {}",
+                key, e
+            ),
         }
     }
-
     if data_vec.is_empty() {
-        return;
+        return Err(Error::new(Other, "data_vec is empty"));
     }
-
-    if let Err(e) = save_rdb_rdb_file(data_vec, &log_rdb_path) {
-        error!(
-            "save_rdb_rdb_file error, log_rdb_path:{}, error:{}",
-            log_rdb_path, e
-        );
-    }
+    save_rdb_rdb_file(data_vec, &log_rdb_path)
 }
 
 fn save_rdb_rdb_file(data: Vec<Persistence>, log_rdb_path: &String) -> Result<(), Error> {
@@ -116,6 +88,7 @@ fn save_rdb_rdb_file(data: Vec<Persistence>, log_rdb_path: &String) -> Result<()
     temp_rdb_file.sync_all()?;
     rename(temp_path.clone(), log_rdb_path)?;
 
+    //TODO 这里的sync_all在突然断电以后，有丢失数据的风险.
     let parent_path = temp_path
         .parent()
         .ok_or_else(|| Error::new(std::io::ErrorKind::Other, "parent_path is empty"))?;
@@ -123,6 +96,7 @@ fn save_rdb_rdb_file(data: Vec<Persistence>, log_rdb_path: &String) -> Result<()
     let parent_file = File::open(parent_path)?;
 
     parent_file.sync_all()?;
+
     info!("success save_rdb_rdb_file");
     Ok(())
 }

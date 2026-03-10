@@ -5,7 +5,7 @@ mod protocol;
 mod storage;
 mod utils;
 
-use crate::storage::backup::restore_from_rdb;
+use crate::storage::backup::restore_storage;
 use api::routers::create_router;
 use dotenv::dotenv;
 use tracing::{error, info};
@@ -17,12 +17,9 @@ async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
-
-    info!("Starting server...");
-
     let app = create_router();
     let listener = tokio::net::TcpListener::bind(ADDR).await.unwrap();
-    if let Err(e) = restore_from_rdb().await {
+    if let Err(e) = restore_storage().await {
         error!("Restore from rdb failed: {}", e);
         return;
     }

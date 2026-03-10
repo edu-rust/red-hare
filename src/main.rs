@@ -8,7 +8,7 @@ mod utils;
 use crate::storage::backup::restore_storage;
 use api::routers::create_router;
 use dotenv::dotenv;
-use tracing::{error, info};
+use tracing::{error};
 
 const ADDR: &str = "127.0.0.1:7200";
 #[tokio::main]

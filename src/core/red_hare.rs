@@ -1,4 +1,4 @@
-use crate::storage::persistence::Persistence;
+use crate::storage::rdb::Persistence;
 use crate::utils::date::is_after_now_with_u128;
 use griddle::HashMap;
 use serde::{Deserialize, Serialize};

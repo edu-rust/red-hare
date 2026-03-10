@@ -14,7 +14,7 @@ pub struct Persistence {
     pub meta_data: MetaData,
 }
 
-pub async fn restore_rdb_file() -> Result<(), Error> {
+pub async fn load_from_rdb() -> Result<(), Error> {
     let log_rdb_path = load_config()
         .map_err(|e| Error::new(Other, e.to_string()))?
         .logging
@@ -32,7 +32,7 @@ pub async fn restore_rdb_file() -> Result<(), Error> {
     Ok(())
 }
 
-pub async fn save_rdb_data() -> Result<(), Error> {
+pub async fn dump_to_rdb() -> Result<(), Error> {
     let log_rdb_path = load_config()
         .map_err(|e| Error::new(Other, e))?
         .logging
@@ -44,7 +44,7 @@ pub async fn save_rdb_data() -> Result<(), Error> {
         keys
     };
     if keys.is_empty() {
-        return Err(Error::new(Other, "keys is empty"));
+        return Ok(());
     }
     let mut data_vec = Vec::with_capacity(keys.len());
 
@@ -69,10 +69,10 @@ pub async fn save_rdb_data() -> Result<(), Error> {
     if data_vec.is_empty() {
         return Err(Error::new(Other, "data_vec is empty"));
     }
-    save_rdb_rdb_file(data_vec, &log_rdb_path)
+    write_rdb_file(data_vec, &log_rdb_path)
 }
 
-fn save_rdb_rdb_file(data: Vec<Persistence>, log_rdb_path: &String) -> Result<(), Error> {
+fn write_rdb_file(data: Vec<Persistence>, log_rdb_path: &String) -> Result<(), Error> {
     let serial_data = bincode::serialize(&data).map_err(|e| {
         error!("failed to serialize persistence data with bincode: {}", e);
         Error::new(std::io::ErrorKind::Other, e.to_string())

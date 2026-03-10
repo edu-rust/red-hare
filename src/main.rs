@@ -13,11 +13,11 @@ use tracing::error;
 const ADDR: &str = "127.0.0.1:7200";
 
 /**
- 1.加载环境变量
- 2.配置日志过滤级别
- 3.从rdb文件加载 数据
- 4.开启单线程，循环将内存中的数据dump到rdb文件
- 5.这里采用的是客户端通过http协议与kv服务器交互，所以这里启动web服务器
+1. Load environment variables
+2. Configure log filtering level
+3. Load data from RDB file
+4. Start a single-threaded task to periodically dump memory data to RDB file
+5. Start web server since clients interact with the KV server via HTTP protocol
 */
 
 #[tokio::main]

@@ -16,7 +16,7 @@ const ADDR: &str = "127.0.0.1:7200";
 1. Load environment variables
 2. Configure log filtering level
 3. Load data from RDB file
-4. Start a single-threaded task to periodically dump memory data to RDB file
+4. Start a task to periodically dump memory data to RDB file
 5. Start web server since clients interact with the KV server via HTTP protocol
 */
 

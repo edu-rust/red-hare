@@ -8,9 +8,6 @@ mod utils;
 use crate::storage::backup::restore_from_rdb;
 use api::routers::create_router;
 use dotenv::dotenv;
-use std::io::Error;
-use std::process;
-use tokio::task::coop::poll_proceed;
 use tracing::{error, info};
 
 const ADDR: &str = "127.0.0.1:7200";

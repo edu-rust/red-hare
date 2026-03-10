@@ -27,6 +27,4 @@ async fn main() {
     if let Err(error) = axum::serve(listener, app).await {
         error!("Failed to start web server: {}", error);
     }
-
-    info!("Web server started at {}", ADDR);
 }

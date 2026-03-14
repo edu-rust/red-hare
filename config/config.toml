@@ -1,3 +1,4 @@
 [logging]
 log_rdb_path = "./redhare_snapshot.rdb"
+log_aof_path="./append_only.aof"
 #log_level = "debug"

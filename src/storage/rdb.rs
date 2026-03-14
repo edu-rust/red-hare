@@ -1,11 +1,10 @@
-use crate::config::log::load_config;
+use crate::config::log::load_log_config;
 use crate::core::red_hare::{MetaData, RedHare};
 use crate::utils::date::is_after_now;
 use serde::{Deserialize, Serialize};
-use std::fs::{File, OpenOptions, rename};
+use std::fs::{File, rename};
 use std::io::ErrorKind::Other;
 use std::io::{Error, Write};
-use std::os::windows::fs::OpenOptionsExt;
 use std::path::Path;
 use tracing::{error, info};
 
@@ -16,9 +15,8 @@ pub struct Persistence {
 }
 
 pub async fn load_from_rdb() -> Result<(), Error> {
-    let log_rdb_path = load_config()
+    let log_rdb_path = load_log_config()
         .map_err(|e| Error::new(Other, e.to_string()))?
-        .logging
         .log_rdb_path;
 
     let file = File::open(&log_rdb_path)?;
@@ -34,9 +32,8 @@ pub async fn load_from_rdb() -> Result<(), Error> {
 }
 
 pub async fn dump_to_rdb() -> Result<(), Error> {
-    let log_rdb_path = load_config()
+    let log_rdb_path = load_log_config()
         .map_err(|e| Error::new(Other, e))?
-        .logging
         .log_rdb_path;
 
     let keys = {

@@ -2,21 +2,8 @@ use crate::core::red_hare::{MetaData, RedHare, STRING};
 use crate::utils::date::{add_nanos, is_after_now};
 
 impl RedHare {
-    pub fn set_string(&mut self, k: &String, v: String) -> Result<bool, String> {
-        if k.is_empty() {
-            return Err(String::from("key is empty"));
-        }
-        let value = v.into_bytes();
-        self.insert(
-            k.clone(),
-            MetaData {
-                value,
-                expire_time: None,
-                data_type: String::from(STRING),
-            },
-        );
-        Ok(true)
-    }
+
+    //传入的expire_time如果是0,则永不失效
     pub fn set_string_with_expire(
         &mut self,
         k: String,
@@ -26,13 +13,13 @@ impl RedHare {
         if k.is_empty() {
             return Err(String::from("key is empty"));
         }
-        let expire_time = add_nanos(expire_time)?;
+        let expire_time = self.get_expire_time(expire_time)?;
         let value = v.into_bytes();
         self.insert(
             k,
             MetaData {
                 value,
-                expire_time: Some(expire_time),
+                expire_time,
                 data_type: String::from(STRING),
             },
         );
@@ -49,7 +36,7 @@ impl RedHare {
             None => return Ok(None),
             Some(data) => data,
         };
-        if data.data_type != crate::core::red_hare::STRING {
+        if data.data_type != STRING {
             return Err(String::from("data type is not string"));
         };
         let is_after_now = is_after_now(data.expire_time)?;

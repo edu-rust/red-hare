@@ -1,5 +1,5 @@
 use crate::storage::rdb::Persistence;
-use crate::utils::date::is_after_now_with_u128;
+use crate::utils::date::{add_nanos, is_after_now_with_u128};
 use griddle::HashMap;
 use serde::{Deserialize, Serialize};
 use std::io::Error;
@@ -29,6 +29,14 @@ impl RedHare {
         &INSTANCE
     }
 
+    pub fn get_expire_time(&mut self,expire_time: u128) -> Result<Option<u128>, String> {
+        if expire_time == 0 {
+            Ok(None)
+        } else {
+            let ret = (add_nanos(expire_time))?;
+            Ok(Some(ret))
+        }
+    }
     pub fn insert(&mut self, k: String, v: MetaData) {
         self.data.insert(k, v);
     }

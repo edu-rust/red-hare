@@ -2,9 +2,10 @@ use crate::config::log::load_config;
 use crate::core::red_hare::{MetaData, RedHare};
 use crate::utils::date::is_after_now;
 use serde::{Deserialize, Serialize};
-use std::fs::{File, rename};
+use std::fs::{File, rename, OpenOptions};
 use std::io::ErrorKind::Other;
 use std::io::{Error, Write};
+use std::os::windows::fs::OpenOptionsExt;
 use std::path::Path;
 use tracing::{error, info};
 
@@ -47,7 +48,6 @@ pub async fn dump_to_rdb() -> Result<(), Error> {
         return Ok(());
     }
     let mut data_vec = Vec::with_capacity(keys.len());
-
     for key in keys {
         let meta = {
             let red_hare = RedHare::get_instance().lock().await;
@@ -75,7 +75,7 @@ pub async fn dump_to_rdb() -> Result<(), Error> {
 fn write_rdb_file(data: Vec<Persistence>, log_rdb_path: &String) -> Result<(), Error> {
     let serial_data = bincode::serialize(&data).map_err(|e| {
         error!("failed to serialize persistence data with bincode: {}", e);
-        Error::new(std::io::ErrorKind::Other, e.to_string())
+        Error::new(Other, e.to_string())
     })?;
 
     let path = Path::new(log_rdb_path);
@@ -92,11 +92,29 @@ fn write_rdb_file(data: Vec<Persistence>, log_rdb_path: &String) -> Result<(), E
     let parent_path = temp_path
         .parent()
         .ok_or_else(|| Error::new(std::io::ErrorKind::Other, "parent_path is empty"))?;
-
-    let parent_file = File::open(parent_path)?;
-
-    parent_file.sync_all()?;
+    sync_directory(parent_path)?;
 
     info!("success save_rdb_rdb_file");
+    Ok(())
+}
+
+
+const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x02000000;
+fn sync_directory<P: AsRef<Path>>(path: P) -> Result<(), Error> {
+    #[cfg(windows)]
+    {
+        // Windows 特定代码
+        let dir_file = OpenOptions::new()
+            .read(true)
+            .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
+            .open(path)?;
+        dir_file.sync_all()?;
+    }
+    #[cfg(unix)]
+    {
+        // Unix/Linux/macOS 通用代码
+        let dir_file = File::open(path.as_ref())?;
+        dir_file.sync_all()?;
+    }
     Ok(())
 }

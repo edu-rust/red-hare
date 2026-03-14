@@ -43,21 +43,7 @@ impl RedHare {
     pub fn keys_get(&self) -> Vec<String> {
         self.data.keys().cloned().collect()
     }
-    pub fn set_bytes(&mut self, persistence: Persistence) -> Result<(), Error> {
-        let meta_data = persistence.meta_data;
-        match meta_data.expire_time {
-            None => self.insert(persistence.key, meta_data),
-            Some(expire_time) => match is_after_now_with_u128(expire_time) {
-                Ok(is_after_now) => {
-                    if is_after_now {
-                        self.insert(persistence.key, meta_data);
-                    }
-                }
-                Err(error) => return Err(Error::other(error)),
-            },
-        };
-        Ok(())
-    }
+
 
     pub fn get_meta_data(&self, k: &String) -> Result<Option<MetaData>, String> {
         if k.is_empty() {

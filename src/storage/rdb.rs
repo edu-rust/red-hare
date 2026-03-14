@@ -1,6 +1,6 @@
 use crate::config::log::load_log_config;
 use crate::core::red_hare::{MetaData, RedHare};
-use crate::utils::date::is_after_now;
+use crate::utils::date::{is_after_now, is_after_now_with_u128};
 use serde::{Deserialize, Serialize};
 use std::fs::{File, rename};
 use std::io::ErrorKind::Other;
@@ -24,10 +24,26 @@ pub async fn load_from_rdb() -> Result<(), Error> {
         bincode::deserialize_from(file).map_err(|e| Error::new(Other, e.to_string()))?;
     let mut red_hare = RedHare::get_instance().lock().await;
     for data in data {
-        if let Err(e) = red_hare.set_bytes(data) {
+        if let Err(e) = set_bytes(&mut *red_hare, data) {
             error!("set_bytes_with_expire failed: {}", e);
         }
     }
+    Ok(())
+}
+
+pub fn set_bytes(red_hare: &mut RedHare, persistence: Persistence) -> Result<(), Error> {
+    let meta_data = persistence.meta_data;
+    match meta_data.expire_time {
+        None => red_hare.insert(persistence.key, meta_data),
+        Some(expire_time) => match is_after_now_with_u128(expire_time) {
+            Ok(is_after_now) => {
+                if is_after_now {
+                    red_hare.insert(persistence.key, meta_data);
+                }
+            }
+            Err(error) => return Err(Error::other(error)),
+        },
+    };
     Ok(())
 }
 

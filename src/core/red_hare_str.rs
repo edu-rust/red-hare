@@ -1,6 +1,5 @@
 use crate::core::red_hare::{MetaData, RedHare, STRING};
 use crate::utils::date::{add_nanos, is_after_now};
-use tracing::info;
 
 impl RedHare {
     pub fn set_string(&mut self, k: &String, v: String) -> Result<bool, String> {
@@ -13,7 +12,7 @@ impl RedHare {
             MetaData {
                 value,
                 expire_time: None,
-                data_type: String::from(crate::core::red_hare::STRING),
+                data_type: String::from(STRING),
             },
         );
         Ok(true)
@@ -55,7 +54,6 @@ impl RedHare {
         };
         let is_after_now = is_after_now(data.expire_time)?;
         if !is_after_now {
-            info!("key: {} is expired", k);
             drop(data); // 释放锁后再删除
             self.data.remove(k);
             return Ok(None);

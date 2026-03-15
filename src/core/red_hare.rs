@@ -28,7 +28,8 @@ impl RedHare {
     pub fn get_instance() -> &'static Mutex<RedHare> {
         &INSTANCE
     }
-    
+
+
     pub fn put(&mut self, k: String, v: MetaData) {
         self.data.insert(k, v);
     }

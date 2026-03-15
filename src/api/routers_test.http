@@ -4,7 +4,7 @@ Content-Type: application/json
 
 {
   "key": "testKey_1",
-  "value": "test_value_2",
+  "value": "test_value_3",
   "expire_time": 1000000000000
 }
 

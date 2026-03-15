@@ -1,6 +1,6 @@
 use crate::config::log::load_log_config;
 use crate::core::red_hare::{MetaData, RedHare};
-use crate::utils::date::{is_after_now, is_after_now_with_u128};
+use crate::utils::date::{is_after_now_with_u128};
 use serde::{Deserialize, Serialize};
 use std::fs::{File, rename};
 use std::io::ErrorKind::Other;
@@ -67,11 +67,7 @@ pub async fn dump_to_rdb() -> Result<(), Error> {
             red_hare.get(&key)
         };
         match meta {
-            Ok(Some(meta_data)) => match is_after_now(meta_data.expire_time) {
-                Ok(true) => data_vec.push(Persistence { key, meta_data }),
-                Ok(false) => {}
-                Err(e) => error!("failed to check expiration time for key {}: {}", key, e),
-            },
+            Ok(Some(meta_data)) => data_vec.push(Persistence { key, meta_data }),
             Ok(None) => {}
             Err(e) => error!(
                 "failed to get_bytes_value_with_expire for key {}: {}",

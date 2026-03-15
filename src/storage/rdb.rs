@@ -105,7 +105,6 @@ fn write_rdb_file(data: Vec<Persistence>, log_rdb_path: &String) -> Result<(), E
     let parent_path = temp_path
         .parent()
         .ok_or_else(|| Error::new(std::io::ErrorKind::Other, "parent_path is empty"))?;
-    info!("sync_directory: {}", parent_path.display());
     sync_directory(parent_path)?;
 
     info!("success save_rdb_rdb_file");

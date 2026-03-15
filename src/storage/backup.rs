@@ -37,7 +37,7 @@ pub async fn restore_storage() -> Result<(), Error> {
 /// # Returns
 /// None - This function runs indefinitely and does not return
 pub async fn loop_dump_to_rdb() {
-    let mut interval = time::interval(Duration::from_secs(60));
+    let mut interval = time::interval(Duration::from_secs(5));
     loop {
         interval.tick().await;
         if let Err(e) = dump_to_rdb().await {

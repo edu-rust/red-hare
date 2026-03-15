@@ -1,6 +1,5 @@
 use std::time::{SystemTime, UNIX_EPOCH};
-
-pub fn is_after_now_with_u128(nanos: u128) -> Result<bool, String> {
+ fn is_after_now_with_u128(nanos: u128) -> Result<bool, String> {
     let current_time = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_err(|e| e.to_string())?

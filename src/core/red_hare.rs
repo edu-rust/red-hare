@@ -1,10 +1,9 @@
-use crate::storage::rdb::Persistence;
-use crate::utils::date::{add_nanos, is_after_now, is_after_now_with_u128};
+use crate::utils::date::{add_nanos, is_after_now};
 use griddle::HashMap;
 use serde::{Deserialize, Serialize};
-use std::io::Error;
 use std::sync::LazyLock;
 use tokio::sync::Mutex;
+use tracing::error;
 
 pub(crate) const STRING: &str = "string";
 pub struct RedHare {
@@ -30,11 +29,17 @@ impl RedHare {
     }
 
     pub fn put(&mut self, k: String, v: MetaData) {
-        self.data.insert(k, v);
-    }
-
-    pub fn delete(&mut self, k: &String) {
-        self.data.remove(k);
+        let is_after_now = is_after_now(v.expire_time);
+        let is_after_now = match is_after_now {
+            Ok(is_after_now) => is_after_now,
+            Err(error) => {
+                error!("put.is_after_now,error:{}", error);
+                return;
+            }
+        };
+        if is_after_now {
+            self.data.insert(k, v);
+        }
     }
 
     pub fn get(&mut self, k: &String) -> Result<Option<MetaData>, String> {
@@ -56,6 +61,10 @@ impl RedHare {
             expire_time: meta_data.expire_time,
             data_type: meta_data.data_type.clone(),
         }))
+    }
+
+    pub fn delete(&mut self, k: &String) {
+        self.data.remove(k);
     }
     pub fn keys_get(&self) -> Vec<String> {
         self.data.keys().cloned().collect()

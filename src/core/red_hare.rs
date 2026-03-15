@@ -1,9 +1,13 @@
+use crate::config::log::load_aof_path;
 use crate::utils::date::{add_nanos, is_after_now};
 use griddle::HashMap;
 use serde::{Deserialize, Serialize};
+use std::fs::OpenOptions;
+use std::io::ErrorKind::Other;
+use std::io::{Error, Write};
 use std::sync::LazyLock;
 use tokio::sync::Mutex;
-use tracing::error;
+use tracing::{error, info};
 
 pub(crate) const STRING: &str = "string";
 pub struct RedHare {
@@ -11,6 +15,60 @@ pub struct RedHare {
 }
 
 #[derive(Serialize, Deserialize)]
+enum OperateType {
+    Put,
+    Delete,
+}
+#[derive(Serialize, Deserialize)]
+struct AofOperate {
+    operate_type: OperateType,
+    key: String,
+    meta_data: Option<MetaData>,
+}
+
+fn append_aof_log(aof_operate: AofOperate) {
+    let log_aof_path = load_aof_path();
+    let log_aof_path = match log_aof_path {
+        Ok(log_aof_path) => log_aof_path,
+        Err(error) => {
+            error!("load_aof_path error:{}", error);
+            return;
+        }
+    };
+    let serial_data = bincode::serialize(&aof_operate).map_err(|e| {
+        error!("failed to serialize aof_operate data with bincode: {}", e);
+        Error::new(Other, e.to_string())
+    });
+    let serial_data = match serial_data {
+        Ok(serial_data) => serial_data,
+        Err(error) => {
+            error!(
+                "failed to serialize aof_operate data with bincode: {}",
+                error
+            );
+            return;
+        }
+    };
+    let mut file = match OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(log_aof_path)
+    {
+        Ok(file) => file,
+        Err(error) => {
+            error!("open aof file error:{}", error);
+            return;
+        }
+    };
+    match file.write_all(&serial_data) {
+        Ok(_) => {}
+        Err(error) => {
+            error!("write aof file error:{}", error);
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone)]
 pub struct MetaData {
     pub value: Vec<u8>,
     pub expire_time: Option<u128>,
@@ -38,7 +96,12 @@ impl RedHare {
             }
         };
         if is_after_now {
-            self.data.insert(k, v);
+            self.data.insert(k.clone(), v.clone());
+            append_aof_log(AofOperate {
+                operate_type: OperateType::Put,
+                key: k,
+                meta_data: Some(v),
+            })
         }
     }
 
@@ -65,6 +128,11 @@ impl RedHare {
 
     pub fn delete(&mut self, k: &String) {
         self.data.remove(k);
+        append_aof_log(AofOperate {
+            operate_type: OperateType::Delete,
+            key: k.clone(),
+            meta_data: None,
+        })
     }
     pub fn keys_get(&self) -> Vec<String> {
         self.data.keys().cloned().collect()

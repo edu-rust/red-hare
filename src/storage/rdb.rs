@@ -1,4 +1,4 @@
-use crate::config::log::load_log_config;
+use crate::config::log::load_rdb_path;
 use crate::core::red_hare::{MetaData, RedHare};
 use serde::{Deserialize, Serialize};
 use std::fs::{File, rename};
@@ -14,9 +14,7 @@ pub struct Persistence {
 }
 
 pub async fn load_from_rdb() -> Result<(), Error> {
-    let log_rdb_path = load_log_config()
-        .map_err(|e| Error::new(Other, e.to_string()))?
-        .log_rdb_path;
+    let log_rdb_path = load_rdb_path().map_err(|e| Error::new(Other, e.to_string()))?;
 
     let file = File::open(&log_rdb_path)?;
     let data: Vec<Persistence> =
@@ -29,9 +27,7 @@ pub async fn load_from_rdb() -> Result<(), Error> {
 }
 
 pub async fn dump_to_rdb() -> Result<(), Error> {
-    let log_rdb_path = load_log_config()
-        .map_err(|e| Error::new(Other, e))?
-        .log_rdb_path;
+    let log_rdb_path = load_rdb_path().map_err(|e| Error::new(Other, e))?;
 
     let keys = {
         let red_hare = RedHare::get_instance().lock().await;

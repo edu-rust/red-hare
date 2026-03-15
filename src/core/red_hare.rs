@@ -7,7 +7,7 @@ use std::io::ErrorKind::Other;
 use std::io::{Error, Write};
 use std::sync::LazyLock;
 use tokio::sync::Mutex;
-use tracing::{error, info};
+use tracing::{error};
 
 pub(crate) const STRING: &str = "string";
 pub struct RedHare {

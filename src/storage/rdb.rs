@@ -34,11 +34,11 @@ pub async fn load_from_rdb() -> Result<(), Error> {
 pub fn set_bytes(red_hare: &mut RedHare, persistence: Persistence) -> Result<(), Error> {
     let meta_data = persistence.meta_data;
     match meta_data.expire_time {
-        None => red_hare.insert(persistence.key, meta_data),
+        None => red_hare.put(persistence.key, meta_data),
         Some(expire_time) => match is_after_now_with_u128(expire_time) {
             Ok(is_after_now) => {
                 if is_after_now {
-                    red_hare.insert(persistence.key, meta_data);
+                    red_hare.put(persistence.key, meta_data);
                 }
             }
             Err(error) => return Err(Error::other(error)),
@@ -63,8 +63,8 @@ pub async fn dump_to_rdb() -> Result<(), Error> {
     let mut data_vec = Vec::with_capacity(keys.len());
     for key in keys {
         let meta = {
-            let red_hare = RedHare::get_instance().lock().await;
-            red_hare.get_meta_data(&key)
+            let mut red_hare = RedHare::get_instance().lock().await;
+            red_hare.get(&key)
         };
         match meta {
             Ok(Some(meta_data)) => match is_after_now(meta_data.expire_time) {

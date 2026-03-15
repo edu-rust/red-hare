@@ -29,9 +29,12 @@ impl RedHare {
         &INSTANCE
     }
 
-
     pub fn put(&mut self, k: String, v: MetaData) {
         self.data.insert(k, v);
+    }
+
+    pub fn delete(&mut self, k: &String) {
+        self.data.remove(k);
     }
 
     pub fn get(&mut self, k: &String) -> Result<Option<MetaData>, String> {
@@ -45,7 +48,7 @@ impl RedHare {
 
         let is_after_now = is_after_now(meta_data.expire_time)?;
         if !is_after_now {
-            self.data.remove(k);
+            self.delete(k);
             return Ok(None);
         }
         Ok(Some(MetaData {
@@ -57,9 +60,6 @@ impl RedHare {
     pub fn keys_get(&self) -> Vec<String> {
         self.data.keys().cloned().collect()
     }
-
-
-    
 }
 
 pub fn get_expire_time(expire_time: u128) -> Result<Option<u128>, String> {

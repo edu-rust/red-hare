@@ -5,6 +5,7 @@ use std::fs::{File, rename};
 use std::io::ErrorKind::Other;
 use std::io::{Error, Write};
 use std::path::Path;
+use std::time::{SystemTime, UNIX_EPOCH};
 use tracing::{error, info};
 
 #[derive(Serialize, Deserialize)]
@@ -28,6 +29,12 @@ pub async fn load_from_rdb() -> Result<(), Error> {
 
 pub async fn dump_to_rdb() -> Result<(), Error> {
     let log_rdb_path = load_rdb_path().map_err(|e| Error::new(Other, e))?;
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+
+    let log_rdb_path = format!("{}_{}.rdb", log_rdb_path, timestamp);
 
     let keys = {
         let red_hare = RedHare::get_instance().lock().await;
@@ -64,31 +71,14 @@ fn write_rdb_file(data: Vec<Persistence>, log_rdb_path: &String) -> Result<(), E
         Error::new(Other, e.to_string())
     })?;
 
-    let path = Path::new(log_rdb_path);
-    let temp_path = path.with_extension("temp");
+    let log_rdb_path = Path::new(log_rdb_path);
 
-    let mut temp_rdb_file = File::create(&temp_path)?;
+    let mut log_rdb_path = File::create(&log_rdb_path)?;
 
-    temp_rdb_file.write_all(&serial_data)?;
+    log_rdb_path.write_all(&serial_data)?;
 
-    temp_rdb_file.sync_all()?;
-    rename(temp_path.clone(), log_rdb_path)?;
-
-    //TODO 这里的sync_all在突然断电以后，有丢失数据的风险.
-    let parent_path = temp_path
-        .parent()
-        .ok_or_else(|| Error::new(std::io::ErrorKind::Other, "parent_path is empty"))?;
-    sync_directory(parent_path)?;
+    log_rdb_path.sync_all()?;
 
     info!("success save_rdb_rdb_file");
-    Ok(())
-}
-fn sync_directory<P: AsRef<Path>>(path: P) -> Result<(), Error> {
-    #[cfg(unix)]
-    {
-        // Unix/Linux/macOS 通用代码
-        let dir_file = File::open(path.as_ref())?;
-        dir_file.sync_all()?;
-    }
     Ok(())
 }

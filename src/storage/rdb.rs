@@ -104,7 +104,6 @@ fn write_rdb_file(data: Vec<Persistence>, log_rdb_path: &String) -> Result<(), E
             error!("failed to delete old RDB file {:?}: {}", file_path, e);
         }
     }
-    info!("success save_rdb_rdb_file");
     Ok(())
 }
 fn all_rdb_file_get() -> Result<Vec<PathBuf>, Error> {

@@ -42,8 +42,6 @@ pub async fn loop_dump_to_rdb() {
         interval.tick().await;
         if let Err(e) = dump_to_rdb().await {
             error!("RDB dump failed: {}", e);
-        } else {
-            info!("rdb dump completed successfully.");
         }
     }
 }

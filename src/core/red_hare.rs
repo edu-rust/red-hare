@@ -1,17 +1,18 @@
-use crate::config::log::load_aof_path;
-use crate::utils::date::{add_nanos, is_after_now};
+use crate::config::log::load_log_dir;
+use crate::utils::common::{add_nanos, ensure_dir_exists, is_after_now};
 use griddle::HashMap;
 use serde::{Deserialize, Serialize};
-use std::fs::OpenOptions;
+use std::fs::{File, OpenOptions};
 use std::io::ErrorKind::Other;
-use std::io::{Error, Write};
-use std::sync::LazyLock;
+use std::io::{BufWriter, Error, Write};
+use std::sync::{LazyLock, OnceLock};
 use tokio::sync::Mutex;
-use tracing::{error};
+use tracing::{error, info, warn};
 
 pub(crate) const STRING: &str = "string";
 pub struct RedHare {
-    pub(crate) data: HashMap<String, MetaData>,
+    data: HashMap<String, MetaData>,
+    aof_writer: Option<BufWriter<File>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -26,48 +27,6 @@ struct AofOperate {
     meta_data: Option<MetaData>,
 }
 
-fn append_aof_log(aof_operate: AofOperate) {
-    let log_aof_path = load_aof_path();
-    let log_aof_path = match log_aof_path {
-        Ok(log_aof_path) => log_aof_path,
-        Err(error) => {
-            error!("load_aof_path error:{}", error);
-            return;
-        }
-    };
-    let serial_data = bincode::serialize(&aof_operate).map_err(|e| {
-        error!("failed to serialize aof_operate data with bincode: {}", e);
-        Error::new(Other, e.to_string())
-    });
-    let serial_data = match serial_data {
-        Ok(serial_data) => serial_data,
-        Err(error) => {
-            error!(
-                "failed to serialize aof_operate data with bincode: {}",
-                error
-            );
-            return;
-        }
-    };
-    let mut file = match OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(log_aof_path)
-    {
-        Ok(file) => file,
-        Err(error) => {
-            error!("open aof file error:{}", error);
-            return;
-        }
-    };
-    match file.write_all(&serial_data) {
-        Ok(_) => {}
-        Err(error) => {
-            error!("write aof file error:{}", error);
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Clone)]
 pub struct MetaData {
     pub value: Vec<u8>,
@@ -77,13 +36,52 @@ pub struct MetaData {
 static INSTANCE: LazyLock<Mutex<RedHare>> = LazyLock::new(|| Mutex::new(RedHare::new()));
 impl RedHare {
     fn new() -> Self {
+        let aof_writer = (|| -> Option<BufWriter<File>> {
+            let log_dir = load_log_dir().ok()?;
+            ensure_dir_exists(&log_dir).ok()?;
+            let file = OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&log_dir)
+                .ok()?;
+            Some(BufWriter::new(file))
+        })();
         RedHare {
             data: HashMap::new(),
+            aof_writer,
         }
     }
 
     pub fn get_instance() -> &'static Mutex<RedHare> {
         &INSTANCE
+    }
+
+    fn append_aof_log(&mut self, aof_operate: AofOperate) {
+        let aof_writer = match self.aof_writer.as_mut() {
+            Some(aof_writer) => aof_writer,
+            None => {
+                warn!("aof_writer is None");
+                return;
+            }
+        };
+        let serial_data = bincode::serialize(&aof_operate).map_err(|e| {
+            error!("failed to serialize aof_operate data with bincode: {}", e);
+            Error::new(Other, e.to_string())
+        });
+        let serial_data = match serial_data {
+            Ok(serial_data) => serial_data,
+            Err(error) => {
+                error!(
+                    "failed to serialize aof_operate data with bincode: {}",
+                    error
+                );
+                return;
+            }
+        };
+
+        if let Err(error) = aof_writer.write_all(&serial_data) {
+            error!("failed to write aof log: {}", error);
+        };
     }
 
     pub fn put(&mut self, k: String, v: MetaData) {
@@ -97,7 +95,7 @@ impl RedHare {
         };
         if is_after_now {
             self.data.insert(k.clone(), v.clone());
-            append_aof_log(AofOperate {
+            self.append_aof_log(AofOperate {
                 operate_type: OperateType::Put,
                 key: k,
                 meta_data: Some(v),
@@ -128,7 +126,7 @@ impl RedHare {
 
     pub fn delete(&mut self, k: &String) {
         self.data.remove(k);
-        append_aof_log(AofOperate {
+        self.append_aof_log(AofOperate {
             operate_type: OperateType::Delete,
             key: k.clone(),
             meta_data: None,

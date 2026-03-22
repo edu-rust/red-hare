@@ -1,21 +1,26 @@
-use crate::config::log::load_rdb_path;
+use crate::config::log::load_log_dir;
 use crate::core::red_hare::{MetaData, RedHare};
 use serde::{Deserialize, Serialize};
-use std::fs::{File, read_dir, remove_file};
+use std::fs::{File, read_dir, remove_file, rename};
 use std::io::ErrorKind::Other;
 use std::io::{Error, Write};
 use std::path::{Path, PathBuf};
+use std::string::ToString;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tracing::{error, info};
+use crate::utils::common::ensure_dir_exists;
 
 #[derive(Serialize, Deserialize)]
 pub struct Persistence {
     pub key: String,
     pub meta_data: MetaData,
 }
+const RDB_BASIC_NAME: &str = "rdb_log_file";
 
 pub async fn load_from_rdb() -> Result<(), Error> {
-    let all_rdb_file = all_rdb_file_get()?;
+    let log_dir = load_log_dir().map_err(|e| Error::new(Other, e))?;
+    ensure_dir_exists(&log_dir)?;
+    let all_rdb_file = all_rdb_file_get(&log_dir)?;
     if all_rdb_file.is_empty() {
         return Ok(());
     }
@@ -47,13 +52,13 @@ fn last_rdb_file_get(p0: Vec<PathBuf>) -> Result<PathBuf, Error> {
 }
 
 pub async fn dump_to_rdb() -> Result<(), Error> {
-    let log_rdb_path = load_rdb_path().map_err(|e| Error::new(Other, e))?;
+    let log_dir = load_log_dir().map_err(|e| Error::new(Other, e))?;
+    ensure_dir_exists(&log_dir)?;
+
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_secs();
-
-    let log_rdb_path = format!("{}_{}.rdb", log_rdb_path, timestamp);
 
     let keys = {
         let red_hare = RedHare::get_instance().lock().await;
@@ -79,26 +84,31 @@ pub async fn dump_to_rdb() -> Result<(), Error> {
         }
     }
     if data_vec.is_empty() {
-        return Ok(())
+        return Ok(());
     }
-    write_rdb_file(data_vec, &log_rdb_path)
+    write_rdb_file(data_vec, log_dir, timestamp)
 }
 
-fn write_rdb_file(data: Vec<Persistence>, log_rdb_path: &String) -> Result<(), Error> {
+fn write_rdb_file(data: Vec<Persistence>, log_dir: String, time_stamp: u64) -> Result<(), Error> {
     let serial_data = bincode::serialize(&data).map_err(|e| {
         error!("failed to serialize persistence data with bincode: {}", e);
         Error::new(Other, e.to_string())
     })?;
-    let expire_rdb_files = all_rdb_file_get()?;
+    let expire_rdb_files = all_rdb_file_get(&log_dir)?;
 
-    let log_rdb_path = Path::new(log_rdb_path);
+    let temp_path = Path::new(&log_dir).join(format!("{}_temp.rdb", RDB_BASIC_NAME));
 
-    let mut log_rdb_path = File::create(&log_rdb_path)?;
-
-    log_rdb_path.write_all(&serial_data)?;
-
-    log_rdb_path.sync_all()?;
-
+    let final_path = Path::new(&log_dir).join(format!("{}_{}.rdb", RDB_BASIC_NAME, time_stamp));
+    {
+        let mut temp_file_file = File::create(&temp_path)?;
+        temp_file_file.write_all(&serial_data)?;
+        temp_file_file.sync_all()?;
+    }
+    rename(&temp_path, &final_path).map_err(|e| {
+        let _ = remove_file(&temp_path);
+        let _ = remove_file(&final_path);
+        e
+    })?;
     for file_path in expire_rdb_files {
         if let Err(e) = remove_file(&file_path) {
             error!("failed to delete old RDB file {:?}: {}", file_path, e);
@@ -106,27 +116,19 @@ fn write_rdb_file(data: Vec<Persistence>, log_rdb_path: &String) -> Result<(), E
     }
     Ok(())
 }
-fn all_rdb_file_get() -> Result<Vec<PathBuf>, Error> {
-    let log_rdb_path = load_rdb_path().map_err(|e| Error::new(Other, e))?;
-    let log_rdb_path = Path::new(&log_rdb_path);
-    let file_basic_name = log_rdb_path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .ok_or_else(|| Error::new(Other, "invalid file name"))?;
 
-    let parent_path = log_rdb_path
-        .parent()
-        .ok_or_else(|| Error::new(Other, "parent directory not found"))?;
-    if parent_path.is_file() {
-        return Err(Error::new(Other, "parent_path is a file"));
-    }
+fn all_rdb_file_get(log_dir: &String) -> Result<Vec<PathBuf>, Error> {
+    // let log_dir = load_log_dir().map_err(|e| Error::new(Other, e))?;
+    // ensure_dir_exists(&log_dir)?;
     let mut path_list = Vec::new();
-    for entry in read_dir(parent_path)? {
+    for entry in read_dir(log_dir)? {
         let entry = entry?;
         let file_name_str = entry.file_name().to_string_lossy().to_string();
-        if file_name_str.contains(file_basic_name) {
+        if file_name_str.contains(RDB_BASIC_NAME) {
             path_list.push(entry.path());
         }
     }
     Ok(path_list)
 }
+
+

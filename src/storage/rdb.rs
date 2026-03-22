@@ -1,5 +1,6 @@
 use crate::config::log::load_log_dir;
 use crate::core::red_hare::{MetaData, RedHare};
+use crate::utils::common::ensure_dir_exists;
 use serde::{Deserialize, Serialize};
 use std::fs::{File, read_dir, remove_file, rename};
 use std::io::ErrorKind::Other;
@@ -8,7 +9,6 @@ use std::path::{Path, PathBuf};
 use std::string::ToString;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tracing::{error, info};
-use crate::utils::common::ensure_dir_exists;
 
 #[derive(Serialize, Deserialize)]
 pub struct Persistence {
@@ -35,7 +35,7 @@ pub async fn load_from_rdb() -> Result<(), Error> {
         bincode::deserialize_from(last_rdb_file).map_err(|e| Error::new(Other, e.to_string()))?;
     let mut red_hare = RedHare::get_instance().lock().await;
     for data in data {
-        red_hare.put(data.key, data.meta_data);
+        red_hare.put(data.key, data.meta_data, false);
     }
     Ok(())
 }
@@ -130,5 +130,3 @@ fn all_rdb_file_get(log_dir: &String) -> Result<Vec<PathBuf>, Error> {
     }
     Ok(path_list)
 }
-
-

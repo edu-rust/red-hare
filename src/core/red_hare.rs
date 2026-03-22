@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::fs::{File, OpenOptions};
 use std::io::ErrorKind::Other;
 use std::io::{BufWriter, Error, Write};
-use std::sync::{LazyLock};
+use std::sync::LazyLock;
 use tokio::sync::Mutex;
 use tracing::{error, warn};
 
@@ -84,7 +84,7 @@ impl RedHare {
         };
     }
 
-    pub fn put(&mut self, k: String, v: MetaData) {
+    pub fn put(&mut self, k: String, v: MetaData, is_aof: bool) {
         let is_after_now = is_after_now(v.expire_time);
         let is_after_now = match is_after_now {
             Ok(is_after_now) => is_after_now,
@@ -93,13 +93,27 @@ impl RedHare {
                 return;
             }
         };
-        if is_after_now {
-            self.data.insert(k.clone(), v.clone());
+        if !is_after_now {
+            return;
+        }
+        self.data.insert(k.clone(), v.clone());
+        if is_aof {
             self.append_aof_log(AofOperate {
                 operate_type: OperateType::Put,
                 key: k,
                 meta_data: Some(v),
-            })
+            });
+        }
+    }
+
+    pub fn delete(&mut self, k: &String, is_aof: bool) {
+        self.data.remove(k);
+        if is_aof {
+            self.append_aof_log(AofOperate {
+                operate_type: OperateType::Delete,
+                key: k.clone(),
+                meta_data: None,
+            });
         }
     }
 
@@ -114,7 +128,7 @@ impl RedHare {
 
         let is_after_now = is_after_now(meta_data.expire_time)?;
         if !is_after_now {
-            self.delete(k);
+            self.delete(k, false);
             return Ok(None);
         }
         Ok(Some(MetaData {
@@ -122,15 +136,6 @@ impl RedHare {
             expire_time: meta_data.expire_time,
             data_type: meta_data.data_type.clone(),
         }))
-    }
-
-    pub fn delete(&mut self, k: &String) {
-        self.data.remove(k);
-        self.append_aof_log(AofOperate {
-            operate_type: OperateType::Delete,
-            key: k.clone(),
-            meta_data: None,
-        })
     }
     pub fn keys_get(&self) -> Vec<String> {
         self.data.keys().cloned().collect()

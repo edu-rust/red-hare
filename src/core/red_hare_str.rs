@@ -1,7 +1,6 @@
-use crate::core::red_hare::{get_expire_time, MetaData, RedHare, STRING};
+use crate::core::red_hare::{MetaData, RedHare, STRING, get_expire_time};
 
 impl RedHare {
-
     //传入的expire_time如果是0,则永不失效
     pub fn set_string_with_expire(
         &mut self,
@@ -21,6 +20,7 @@ impl RedHare {
                 expire_time,
                 data_type: String::from(STRING),
             },
+            true,
         );
         Ok(true)
     }

@@ -8,7 +8,7 @@ use std::io::{BufWriter, Error, Write};
 use std::path::Path;
 use std::sync::LazyLock;
 use tokio::sync::Mutex;
-use tracing::{error, info, warn};
+use tracing::{error, warn};
 
 pub(crate) const STRING: &str = "string";
 pub struct RedHare {

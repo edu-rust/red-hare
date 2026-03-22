@@ -5,9 +5,9 @@ use serde::{Deserialize, Serialize};
 use std::fs::{File, OpenOptions};
 use std::io::ErrorKind::Other;
 use std::io::{BufWriter, Error, Write};
-use std::sync::{LazyLock, OnceLock};
+use std::sync::{LazyLock};
 use tokio::sync::Mutex;
-use tracing::{error, info, warn};
+use tracing::{error, warn};
 
 pub(crate) const STRING: &str = "string";
 pub struct RedHare {

@@ -1,5 +1,6 @@
 use std::fs::create_dir_all;
 use std::io::Error;
+use std::io::ErrorKind::Other;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tracing::error;
@@ -31,14 +32,11 @@ pub fn add_nanos(nanos: u128) -> Result<u128, String> {
 }
 pub fn ensure_dir_exists(dir: &String) -> Result<(), Error> {
     let path = Path::new(&dir);
-    if path.exists() && path.is_dir() {
-        return Ok(());
+    if !path.exists() {
+        create_dir_all(path)?;
     }
-    if !path.is_dir() {
-        error!("log.dir:{:?} is not a dir", path);
-    }
-    if let Err(error) = create_dir_all(path) {
-        error!("create log.dir:{:?} error:{}", path, error)
+    if path.is_dir() {
+        return Err(Error::new(Other, "log.dir is not a dir"));
     }
     Ok(())
 }

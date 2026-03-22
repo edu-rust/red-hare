@@ -43,9 +43,7 @@ pub async  fn load_from_rdb() -> Result<(), Error> {
 }
 
 fn last_rdb_file_get() -> Result<Option<PathBuf>, Error> {
-    info!("1111111111111");
     let log_dir = load_log_dir().map_err(|e| Error::new(Other, e))?;
-    info!("22222222222222");
     ensure_dir_exists(&log_dir)?;
     let all_rdb_file = all_rdb_file_get(&log_dir)?;
     if all_rdb_file.is_empty() {

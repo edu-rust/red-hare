@@ -5,9 +5,10 @@ use serde::{Deserialize, Serialize};
 use std::fs::{File, OpenOptions};
 use std::io::ErrorKind::Other;
 use std::io::{BufWriter, Error, Write};
+use std::path::Path;
 use std::sync::LazyLock;
 use tokio::sync::Mutex;
-use tracing::{error, warn};
+use tracing::{error, info, warn};
 
 pub(crate) const STRING: &str = "string";
 pub struct RedHare {
@@ -39,12 +40,13 @@ impl RedHare {
         let aof_writer = (|| -> Option<BufWriter<File>> {
             let log_dir = load_log_dir().ok()?;
             ensure_dir_exists(&log_dir).ok()?;
-            let file = OpenOptions::new()
+            let aof_log_file = Path::new(&log_dir).join("aof_log_file.aof");
+            let aof_log_file = OpenOptions::new()
                 .create(true)
                 .append(true)
-                .open(&log_dir)
+                .open(aof_log_file)
                 .ok()?;
-            Some(BufWriter::new(file))
+            Some(BufWriter::with_capacity(64 * 1024, aof_log_file))
         })();
         RedHare {
             data: HashMap::new(),
@@ -81,6 +83,9 @@ impl RedHare {
 
         if let Err(error) = aof_writer.write_all(&serial_data) {
             error!("failed to write aof log: {}", error);
+        };
+        if let Err(error) = aof_writer.flush() {
+            error!("failed to flush aof log: {}", error);
         };
     }
 

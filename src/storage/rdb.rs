@@ -17,14 +17,16 @@ pub struct Persistence {
 }
 const RDB_BASIC_NAME: &str = "rdb_log_file";
 
-pub async fn load_from_rdb() -> Result<(), Error> {
-    let log_dir = load_log_dir().map_err(|e| Error::new(Other, e))?;
-    ensure_dir_exists(&log_dir)?;
-    let all_rdb_file = all_rdb_file_get(&log_dir)?;
-    if all_rdb_file.is_empty() {
-        return Ok(());
-    }
-    let last_rdb_file = last_rdb_file_get(all_rdb_file)?;
+pub async  fn load_from_rdb() -> Result<(), Error> {
+    let last_rdb_file = match last_rdb_file_get() {
+        Ok(Some(last_rdb_file)) => last_rdb_file,
+        Ok(None) => return Ok(()),
+        Err(error) => {
+            error!("last_rdb_file_get error:{}", error);
+            return Ok(());
+        }
+    };
+
     let last_rdb_file = File::open(&last_rdb_file).map_err(|e| {
         Error::new(
             Other,
@@ -40,15 +42,24 @@ pub async fn load_from_rdb() -> Result<(), Error> {
     Ok(())
 }
 
-fn last_rdb_file_get(p0: Vec<PathBuf>) -> Result<PathBuf, Error> {
-    p0.into_iter()
-        .max_by_key(|path| {
-            path.file_name()
-                .and_then(|n| n.to_str())
-                .and_then(|name| name.split('_').last())
-                .and_then(|ts| ts.replace(".rdb", "").parse::<u64>().ok())
-        })
-        .ok_or_else(|| Error::new(Other, "no RDB files found"))
+fn last_rdb_file_get() -> Result<Option<PathBuf>, Error> {
+    let log_dir = load_log_dir().map_err(|e| Error::new(Other, e))?;
+    ensure_dir_exists(&log_dir)?;
+    let all_rdb_file = all_rdb_file_get(&log_dir)?;
+    if all_rdb_file.is_empty() {
+        return Ok(None);
+    }
+    if all_rdb_file.is_empty() {
+        return Ok(None);
+    }
+
+    let last_rdb_file = all_rdb_file.into_iter().max_by_key(|path| {
+        path.file_name()
+            .and_then(|n| n.to_str())
+            .and_then(|name| name.split('_').last())
+            .and_then(|ts| ts.replace(".rdb", "").parse::<u64>().ok())
+    });
+    Ok(last_rdb_file)
 }
 
 pub async fn dump_to_rdb() -> Result<(), Error> {

@@ -12,7 +12,7 @@ pub fn load_log_dir() -> Result<String, String> {
 }
 
 fn load_log_config() -> Result<LoggingConfig, String> {
-    let contents = fs::read_to_string("../../config.toml").map_err(|error| error.to_string())?;
+    let contents = fs::read_to_string("./config.toml").map_err(|error| error.to_string())?;
     let config = toml::from_str(&contents).map_err(|error| error.to_string())?;
     Ok(config)
 }

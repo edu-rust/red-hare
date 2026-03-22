@@ -3,8 +3,6 @@ use std::io::Error;
 use std::io::ErrorKind::Other;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tracing::error;
-
 fn is_after_now_with_u128(nanos: u128) -> Result<bool, String> {
     let current_time = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -35,7 +33,7 @@ pub fn ensure_dir_exists(dir: &String) -> Result<(), Error> {
     if !path.exists() {
         create_dir_all(path)?;
     }
-    if path.is_dir() {
+    if !path.is_dir() {
         return Err(Error::new(Other, "log.dir is not a dir"));
     }
     Ok(())

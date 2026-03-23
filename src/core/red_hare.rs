@@ -131,9 +131,9 @@ impl RedHare {
         Ok(())
     }
 
-    pub fn get(&mut self, k: &String) -> Result<Option<MetaData>, String> {
+    pub fn get(&mut self, k: &String) -> Result<Option<MetaData>, Error> {
         if k.is_empty() {
-            return Err(String::from("key is empty"));
+            return Err(Error::new(Other, "key is empty"));
         }
         let meta_data = match self.data.get(k) {
             Some(meta_data) => meta_data,
@@ -142,7 +142,7 @@ impl RedHare {
 
         let is_after_now = is_after_now(meta_data.expire_time)?;
         if !is_after_now {
-            self.delete(k, false);
+            self.delete(k, false)?;
             return Ok(None);
         }
         Ok(Some(MetaData {
@@ -156,11 +156,11 @@ impl RedHare {
     }
 }
 
-pub fn get_expire_time(expire_time: u128) -> Result<Option<u128>, String> {
+pub fn get_expire_time(expire_time: u128) -> Result<Option<u128>, Error> {
     if expire_time == 0 {
         Ok(None)
     } else {
-        let ret = (add_nanos(expire_time))?;
+        let ret = add_nanos(expire_time)?;
         Ok(Some(ret))
     }
 }

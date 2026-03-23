@@ -1,4 +1,5 @@
 use crate::core::red_hare::RedHare;
+use std::error::Error;
 use tracing::info;
 
 pub async fn set_string_with_expire(
@@ -7,12 +8,14 @@ pub async fn set_string_with_expire(
     expire_time: u128,
 ) -> Result<bool, String> {
     let mut red_hare = RedHare::get_instance().lock().await;
-    let ret = red_hare.set_string_with_expire(k.clone(), v, expire_time)?;
-    Ok(ret)
+    let ret = red_hare
+        .set_string_with_expire(k.clone(), v, expire_time)
+        .map_err(|e| e.to_string());
+    ret
 }
 
 pub async fn get_string(k: String) -> Result<Option<String>, String> {
     let mut red_hare = RedHare::get_instance().lock().await;
-    let ret = red_hare.get_string(&k)?;
-    Ok(ret)
+    let ret = red_hare.get_string(&k).map_err(|e| e.to_string());
+    ret
 }

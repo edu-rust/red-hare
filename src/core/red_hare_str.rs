@@ -1,4 +1,6 @@
 use crate::core::red_hare::{MetaData, RedHare, STRING, get_expire_time};
+use std::io::Error;
+use std::io::ErrorKind::Other;
 
 impl RedHare {
     //传入的expire_time如果是0,则永不失效
@@ -7,9 +9,9 @@ impl RedHare {
         k: String,
         v: String,
         expire_time: u128,
-    ) -> Result<bool, String> {
+    ) -> Result<bool, Error> {
         if k.is_empty() {
-            return Err(String::from("key is empty"));
+            return Err(Error::new(Other, "key is empty"));
         }
         let expire_time = get_expire_time(expire_time)?;
         let value = v.into_bytes();
@@ -21,25 +23,21 @@ impl RedHare {
                 data_type: String::from(STRING),
             },
             true,
-        );
+        )?;
         Ok(true)
     }
 
-    pub fn get_string(&mut self, k: &String) -> Result<Option<String>, String> {
-        let data = self.get(k);
-        let data = match data {
-            Ok(data) => data,
-            Err(e) => return Err(e),
-        };
+    pub fn get_string(&mut self, k: &String) -> Result<Option<String>, Error> {
+        let data = self.get(k)?;
         let data = match data {
             None => return Ok(None),
             Some(data) => data,
         };
         if data.data_type != STRING {
-            return Err(String::from("data type is not string"));
+            return Err(Error::new(Other, "data type is not string"));
         };
         String::from_utf8(data.value)
             .map(|s| Some(s))
-            .map_err(|e| e.to_string())
+            .map_err(|e| Error::new(Other, e))
     }
 }

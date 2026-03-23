@@ -9,7 +9,7 @@ use std::io::{BufWriter, Error, Write};
 use std::path::Path;
 use std::sync::LazyLock;
 use tokio::sync::Mutex;
-use tracing::{error, warn};
+use tracing::{error};
 
 pub(crate) const STRING: &str = "string";
 pub struct RedHare {
@@ -67,55 +67,46 @@ impl RedHare {
         &INSTANCE
     }
 
-    fn append_aof_log(&mut self, aof_operate: AofOperate) {
+    fn flush_aof_log(&mut self) -> Result<(), Error> {
+        let aof_writer = self.buf_writer_get()?;
+        aof_writer.flush()?;
+        Ok(())
+    }
+
+    fn buf_writer_get(&mut self) -> Result<&mut BufWriter<File>, Error> {
+        let aof_writer = match self.aof_writer.get_mut() {
+            Some(aof_writer) => aof_writer,
+            None => return Err(Error::new(Other, "aof_writer is None")),
+        };
+        Ok(aof_writer)
+    }
+    fn append_aof_log(&mut self, aof_operate: AofOperate) -> Result<(), Error> {
         let cur_aof_size = self.cur_aof_size.get_mut();
         if *cur_aof_size > 64 * 1024 * 1024 {
-            self.aof_writer.get_mut().take();
+            self.flush_aof_log()?;
             self.aof_writer
                 .replace(get_aof_writer().unwrap_or_else(|_| None));
         }
-
-        let aof_writer = match self.aof_writer.get_mut() {
-            Some(aof_writer) => aof_writer,
-            None => {
-                warn!("aof_writer is None");
-                return;
-            }
-        };
-        let serial_data = bincode::serialize(&aof_operate).map_err(|e| {
-            error!("failed to serialize aof_operate data with bincode: {}", e);
-            Error::new(Other, e.to_string())
-        });
-        let serial_data = match serial_data {
-            Ok(serial_data) => serial_data,
-            Err(error) => {
-                error!(
-                    "failed to serialize aof_operate data with bincode: {}",
-                    error
-                );
-                return;
-            }
-        };
-
+        let aof_writer = self.buf_writer_get()?;
+        let serial_data =
+            bincode::serialize(&aof_operate).map_err(|e| Error::new(Other, e.to_string()))?;
         if let Err(error) = aof_writer.write_all(&serial_data) {
-            error!("failed to write aof log: {}", error);
+            return Err(Error::new(Other, error));
         };
-        if let Err(error) = aof_writer.flush() {
-            error!("failed to flush aof log: {}", error);
-        };
+        Ok(())
     }
 
-    pub fn put(&mut self, k: String, v: MetaData, is_aof: bool) {
+    pub fn put(&mut self, k: String, v: MetaData, is_aof: bool) -> Result<(), Error> {
         let is_after_now = is_after_now(v.expire_time);
         let is_after_now = match is_after_now {
             Ok(is_after_now) => is_after_now,
             Err(error) => {
                 error!("put.is_after_now,error:{}", error);
-                return;
+                return Ok(());
             }
         };
         if !is_after_now {
-            return;
+            return Ok(());
         }
         self.data.insert(k.clone(), v.clone());
         if is_aof {
@@ -123,19 +114,21 @@ impl RedHare {
                 operate_type: OperateType::Put,
                 key: k,
                 meta_data: Some(v),
-            });
+            })?;
         }
+        Ok(())
     }
 
-    pub fn delete(&mut self, k: &String, is_aof: bool) {
+    pub fn delete(&mut self, k: &String, is_aof: bool)-> Result<(), Error> {
         self.data.remove(k);
         if is_aof {
             self.append_aof_log(AofOperate {
                 operate_type: OperateType::Delete,
                 key: k.clone(),
                 meta_data: None,
-            });
+            })?;
         }
+        Ok(())
     }
 
     pub fn get(&mut self, k: &String) -> Result<Option<MetaData>, String> {

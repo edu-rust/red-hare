@@ -1,2 +1,3 @@
 log_dir = "./logs"
+manifest = "./red-hare.manifest"
 #log_level = "debug"

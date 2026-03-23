@@ -2,6 +2,7 @@ use crate::config::log::load_log_dir;
 use crate::utils::common::{add_nanos, ensure_dir_exists, is_after_now};
 use griddle::HashMap;
 use serde::{Deserialize, Serialize};
+use std::cell::RefCell;
 use std::fs::{File, OpenOptions};
 use std::io::ErrorKind::Other;
 use std::io::{BufWriter, Error, Write};
@@ -13,7 +14,8 @@ use tracing::{error, warn};
 pub(crate) const STRING: &str = "string";
 pub struct RedHare {
     data: HashMap<String, MetaData>,
-    aof_writer: Option<BufWriter<File>>,
+    cur_aof_size: RefCell<u128>,
+    aof_writer: RefCell<Option<BufWriter<File>>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -35,22 +37,29 @@ pub struct MetaData {
     pub data_type: String,
 }
 static INSTANCE: LazyLock<Mutex<RedHare>> = LazyLock::new(|| Mutex::new(RedHare::new()));
+
+fn get_aof_writer() -> Result<Option<BufWriter<File>>, Error> {
+    let aof_writer = (|| -> Option<BufWriter<File>> {
+        let log_dir = load_log_dir().ok()?;
+        ensure_dir_exists(&log_dir).ok()?;
+        let aof_log_file = Path::new(&log_dir).join("aof_log_file.aof");
+        let aof_log_file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(aof_log_file)
+            .ok()?;
+        Some(BufWriter::with_capacity(256 * 1024, aof_log_file))
+    })();
+    Ok(aof_writer)
+}
+
 impl RedHare {
     fn new() -> Self {
-        let aof_writer = (|| -> Option<BufWriter<File>> {
-            let log_dir = load_log_dir().ok()?;
-            ensure_dir_exists(&log_dir).ok()?;
-            let aof_log_file = Path::new(&log_dir).join("aof_log_file.aof");
-            let aof_log_file = OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(aof_log_file)
-                .ok()?;
-            Some(BufWriter::with_capacity(64 * 1024, aof_log_file))
-        })();
+        let aof_writer = RefCell::new(get_aof_writer().unwrap_or_else(|_| None));
         RedHare {
             data: HashMap::new(),
             aof_writer,
+            cur_aof_size: RefCell::new(0),
         }
     }
 
@@ -59,7 +68,14 @@ impl RedHare {
     }
 
     fn append_aof_log(&mut self, aof_operate: AofOperate) {
-        let aof_writer = match self.aof_writer.as_mut() {
+        let cur_aof_size = self.cur_aof_size.get_mut();
+        if *cur_aof_size > 64 * 1024 * 1024 {
+            self.aof_writer.get_mut().take();
+            self.aof_writer
+                .replace(get_aof_writer().unwrap_or_else(|_| None));
+        }
+
+        let aof_writer = match self.aof_writer.get_mut() {
             Some(aof_writer) => aof_writer,
             None => {
                 warn!("aof_writer is None");

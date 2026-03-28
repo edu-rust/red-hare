@@ -31,7 +31,7 @@ enum OperateType {
 }
 
 impl RedHare {
-    fn replace_rdb_log(&mut self, aof_log: BasicLog) -> Result<(), Error> {
+    fn append_aof_log(&mut self, aof_log: BasicLog) -> Result<(), Error> {
         let mainfest_path = load_manifest()?;
         let manifest_path_temp = &format!("{}.temp", &mainfest_path);
         let manifest_content_temp = read_to_string(&manifest_path_temp)?;

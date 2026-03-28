@@ -1,34 +1,20 @@
-use crate::config::log::load_log_dir;
+use crate::config::log::{load_log_dir, load_manifest};
 use crate::utils::common::{add_nanos, ensure_dir_exists, is_after_now};
 use griddle::HashMap;
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
-use std::fs::{File, OpenOptions};
 use std::io::ErrorKind::Other;
-use std::io::{BufWriter, Error, Write};
-use std::path::Path;
+use std::io::{Error};
 use std::sync::LazyLock;
 use tokio::sync::Mutex;
-use tracing::{error};
+use tracing::error;
 
 pub(crate) const STRING: &str = "string";
 pub struct RedHare {
     data: HashMap<String, MetaData>,
     cur_aof_size: RefCell<u128>,
-    aof_writer: RefCell<Option<BufWriter<File>>>,
 }
 
-#[derive(Serialize, Deserialize)]
-enum OperateType {
-    Put,
-    Delete,
-}
-#[derive(Serialize, Deserialize)]
-struct AofOperate {
-    operate_type: OperateType,
-    key: String,
-    meta_data: Option<MetaData>,
-}
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct MetaData {
@@ -36,29 +22,14 @@ pub struct MetaData {
     pub expire_time: Option<u128>,
     pub data_type: String,
 }
-static INSTANCE: LazyLock<Mutex<RedHare>> = LazyLock::new(|| Mutex::new(RedHare::new()));
 
-fn get_aof_writer() -> Result<Option<BufWriter<File>>, Error> {
-    let aof_writer = (|| -> Option<BufWriter<File>> {
-        let log_dir = load_log_dir().ok()?;
-        ensure_dir_exists(&log_dir).ok()?;
-        let aof_log_file = Path::new(&log_dir).join("aof_log_file.aof");
-        let aof_log_file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(aof_log_file)
-            .ok()?;
-        Some(BufWriter::with_capacity(256 * 1024, aof_log_file))
-    })();
-    Ok(aof_writer)
-}
+static INSTANCE: LazyLock<Mutex<RedHare>> = LazyLock::new(|| Mutex::new(RedHare::new()));
 
 impl RedHare {
     fn new() -> Self {
-        let aof_writer = RefCell::new(get_aof_writer().unwrap_or_else(|_| None));
         RedHare {
             data: HashMap::new(),
-            aof_writer,
+            // aof_writer,
             cur_aof_size: RefCell::new(0),
         }
     }
@@ -66,35 +37,7 @@ impl RedHare {
     pub fn get_instance() -> &'static Mutex<RedHare> {
         &INSTANCE
     }
-
-    fn flush_aof_log(&mut self) -> Result<(), Error> {
-        let aof_writer = self.buf_writer_get()?;
-        aof_writer.flush()?;
-        Ok(())
-    }
-
-    fn buf_writer_get(&mut self) -> Result<&mut BufWriter<File>, Error> {
-        let aof_writer = match self.aof_writer.get_mut() {
-            Some(aof_writer) => aof_writer,
-            None => return Err(Error::new(Other, "aof_writer is None")),
-        };
-        Ok(aof_writer)
-    }
-    fn append_aof_log(&mut self, aof_operate: AofOperate) -> Result<(), Error> {
-        let cur_aof_size = self.cur_aof_size.get_mut();
-        if *cur_aof_size > 64 * 1024 * 1024 {
-            self.flush_aof_log()?;
-            self.aof_writer
-                .replace(get_aof_writer().unwrap_or_else(|_| None));
-        }
-        let aof_writer = self.buf_writer_get()?;
-        let serial_data =
-            bincode::serialize(&aof_operate).map_err(|e| Error::new(Other, e.to_string()))?;
-        if let Err(error) = aof_writer.write_all(&serial_data) {
-            return Err(Error::new(Other, error));
-        };
-        Ok(())
-    }
+    
 
     pub fn put(&mut self, k: String, v: MetaData, is_aof: bool) -> Result<(), Error> {
         let is_after_now = is_after_now(v.expire_time);
@@ -110,23 +53,19 @@ impl RedHare {
         }
         self.data.insert(k.clone(), v.clone());
         if is_aof {
-            self.append_aof_log(AofOperate {
-                operate_type: OperateType::Put,
-                key: k,
-                meta_data: Some(v),
-            })?;
+            
         }
         Ok(())
     }
 
-    pub fn delete(&mut self, k: &String, is_aof: bool)-> Result<(), Error> {
+    pub fn delete(&mut self, k: &String, is_aof: bool) -> Result<(), Error> {
         self.data.remove(k);
         if is_aof {
-            self.append_aof_log(AofOperate {
-                operate_type: OperateType::Delete,
-                key: k.clone(),
-                meta_data: None,
-            })?;
+            // self.append_aof_log(AofOperate {
+            //     operate_type: OperateType::Delete,
+            //     key: k.clone(),
+            //     meta_data: None,
+            // })?;
         }
         Ok(())
     }
